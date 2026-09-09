@@ -1,0 +1,38 @@
+{
+  "name": "dsh-medical-agent",
+  "version": "0.1.0",
+  "description": "Medical-GPT 医疗大模型 Agent —— DeepSeek Harness 医疗工具插件（症状分析 / 药品查询 / 相互作用 / 指南检索 + 安全策略）",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "dsh": {
+    "plugin": "./dist/index.js"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "medical",
+    "agent",
+    "medicalgpt",
+    "healthcare",
+    "llm"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/schemastery": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/schemastery": "*"
+  }
+}

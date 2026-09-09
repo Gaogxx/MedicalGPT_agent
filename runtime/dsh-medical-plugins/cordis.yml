@@ -1,0 +1,65 @@
+# 医疗 Agent 精简 overlay（headless 或 web 应用）
+# 目标：把 DSH 从"编码 agent"变成"纯医疗 agent"
+# - 禁用所有编码工具（bash/fs/web/subagent/workflow/todo/goal/skill）
+# - 禁用 agent-instructions（阻止注入 deepseek-harness 的 AGENTS.md）
+# - 注入医疗 system prompt + 加载 3 个医疗工具
+
+# 1. 默认模型 → vllm 训练模型
+- id: agent-default-model
+  config:
+    provider: vllm-medical
+    model: medical-agent
+
+# 2. system prompt → 纯医疗 persona（去掉 harness 身份 + 编码指令）
+- id: system-prompt
+  config:
+    includeHarnessIdentity: false
+    includeRuntimeContext: false
+    personaPrefix: |
+      你是一位专业的医疗助手。在回答患者问题时：
+      1. 优先使用工具（check_symptom / search_drug / search_guideline）获取准确信息，不要凭记忆回答
+      2. 症状分析仅作参考，必须建议患者就医确认
+      3. 药品信息必须查询工具获取，确保准确
+      4. 涉及诊断、处方时必须明确告知需要医生确认
+      5. 遇到紧急症状（呼吸困难、胸痛、昏迷等）立即建议拨打120
+
+# 3. 禁用编码工具（模型可见的）
+- id: tool-bash
+  disabled: true
+- id: tool-pwsh
+  disabled: true
+- id: tool-jobs
+  disabled: true
+- id: tool-fs
+  disabled: true
+- id: tool-fs-search
+  disabled: true
+- id: tool-skill
+  disabled: true
+- id: tool-goal
+  disabled: true
+- id: tool-ralph
+  disabled: true
+- id: tool-subagent
+  disabled: true
+- id: tool-subagent-fork
+  disabled: true
+- id: tool-subagent-control
+  disabled: true
+- id: tool-subagent-list-agents
+  disabled: true
+- id: tool-workflow
+  disabled: true
+- id: tool-todo
+  disabled: true
+- id: tool-web
+  disabled: true
+
+# 4. 禁用 agent-instructions（阻止注入仓库 AGENTS.md）
+- id: agent-instructions
+  disabled: true
+
+# 5. 加载医疗工具插件
+- insert:
+    - id: dsh-medical-tools
+      name: '/root/autodl-tmp/deepseek-harness/scratch-plugin/src/index.ts'

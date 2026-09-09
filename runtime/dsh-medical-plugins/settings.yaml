@@ -1,0 +1,15 @@
+# DeepSeek Harness 用户设置 —— 医疗 Agent 部署
+# 位置：$DSH_HOME/settings.yaml（默认 ~/.dsh/settings.yaml）
+#
+# 连本地 vllm 服务的训练模型（OpenAI Chat Completions 兼容 API）
+llm-pi-ai:
+  providers:
+    vllm-medical:
+      apiKeyEnv: VLLM_API_KEY
+      api: openai-completions
+      baseURL: http://127.0.0.1:8000/v1
+      models:
+        - id: medical-agent
+          name: Medical Agent (Qwen2.5-7B OPD)
+          contextWindow: 16384
+          maxTokens: 2048
