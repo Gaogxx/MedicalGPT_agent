@@ -1,0 +1,22 @@
+# MedicalGPT 训练环境依赖（Python 3.10 + CUDA 11.8/12.x）
+# 在 AutoDL / GPU Linux 上执行：
+#   conda create -n medgpt python=3.10 -y && conda activate medgpt
+#   pip install -r requirements.txt
+# 注：具体 torch 版本需按 CUDA 版本调整，见 https://pytorch.org/get-started/locally/
+
+torch>=2.1.0
+transformers>=4.40.0
+datasets>=2.16.0
+peft>=0.10.0
+accelerate>=0.28.0
+trl>=0.8.0
+sentencepiece
+bitsandbytes>=0.42.0
+scipy
+einops
+tensorboard
+scikit-learn
+numpy
+pandas
+tqdm
+openai          # gen_seed_data.py 依赖

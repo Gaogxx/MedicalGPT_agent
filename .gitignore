@@ -1,0 +1,27 @@
+# 模型压缩包（12G，无法上传 GitHub，从网盘/服务器获取）
+models/*.tar.gz
+models/*.tar
+models/*/
+!models/.gitkeep
+
+# 评估与测试（用户要求排除）
+eval/
+tests/
+
+# 运行时日志
+logs/*.jsonl
+logs/*.log
+!logs/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node / dsh
+node_modules/
+runtime/dsh-medical-plugins/dist/
+
+# 系统
+.DS_Store
