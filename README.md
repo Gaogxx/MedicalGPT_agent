@@ -208,13 +208,7 @@ bash merge_lora.sh       # 合并 LoRA 导出完整权重
 ### 阶段 B：部署（运行时）
 
 ```bash
-# 方式一：Python FastAPI 运行时（免 GPU 可用 --mock）
-cd runtime/server
-pip install -r requirements.txt
-python main.py --backend mock                    # 无 GPU 联调
-python main.py --backend vllm --base-url http://localhost:8000/v1 --model medical-agent   # 接 vLLM
-
-# 方式二：DeepSeek Harness
+DeepSeek Harness
 cd runtime/dsh-medical-plugins && npm install && npm run build
 npx @deepseek-ai/dsh web   # 打开 http://127.0.0.1:3080
 ```
@@ -273,7 +267,6 @@ Medical/
 │   │   └── opd-qwen2.5-7b-agent/
 │   └── requirements.txt
 ├── runtime/
-│   ├── server/                      # Python FastAPI 运行时（备用/联调）
 │   └── dsh-medical-plugins/         # DeepSeek Harness 插件（TypeScript/Cordis）
 ├── models/                          # 训练产出模型权重（.gitignore）
 │   └── medical-agent-opd.tar.gz     # 最终合并模型（12G，压缩包）
@@ -288,7 +281,6 @@ Medical/
 | 文档 | 说明 |
 |------|------|
 | [架构文档](docs/architecture.md) | 数据流图、组件交互图、关键设计决策 |
-| [训练文档](docs/training.md) | 训练实录（步骤 + 22 个踩坑 + 评估结果）+ 通用方法论 |
 | [部署文档](docs/deployment.md) | 环境要求、启动步骤、API 文档 |
 
 ---
