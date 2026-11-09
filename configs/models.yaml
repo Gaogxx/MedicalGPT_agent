@@ -1,0 +1,29 @@
+# 模型分层（ModelPool.from_yaml 读取）。价格单位：每百万 token，按各平台官网当前价格填写（此处留 0 表示未核实）。
+# 选型说明见 docs/routing.md。模型 ID 以各平台控制台为准——下面的 ID 来自公开资料，上线前请核对。
+tiers:
+  strong:                       # 云端医疗强模型：急症 / 高风险 / 路由判定本地会答砸的问题
+    - name: baichuan-m3
+      base_url: https://api.baichuan-ai.com/v1
+      api_key_env: BAICHUAN_API_KEY
+      model: Baichuan-M3        # 或 Baichuan-M3-Plus（更便宜）；HealthBench 自报领先，需自测
+      timeout: 60
+      price_in: 0
+      price_out: 0
+    - name: deepseek
+      base_url: https://api.deepseek.com/v1
+      api_key_env: DEEPSEEK_API_KEY
+      model: deepseek-chat
+      timeout: 60
+  local:                        # 本地中模型 / 兜底：微调后的 MedicalGPT（vLLM）
+    - name: medicalgpt-7b
+      base_url: http://127.0.0.1:8000/v1
+      api_key_env: VLLM_API_KEY
+      model: medical-agent
+      timeout: 60
+  small:                        # 小模型档：只回答通过门控的概念/科普题（TieredRouter），同时兼做控制面（改写/摘要/判别）
+    - name: qwen3.5-2b          # vLLM ≥0.17：vllm serve Qwen/Qwen3.5-2B --port 8001 --reasoning-parser qwen3
+      base_url: http://127.0.0.1:8001/v1
+      api_key_env: VLLM_API_KEY
+      model: Qwen/Qwen3.5-2B
+      timeout: 15
+      extra_body: {chat_template_kwargs: {enable_thinking: false}}

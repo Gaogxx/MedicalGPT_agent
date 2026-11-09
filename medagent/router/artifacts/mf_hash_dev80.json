@@ -1,0 +1,7 @@
+{
+  "features": "mf_hash",
+  "threshold@40%": 0.006071514417576834,
+  "trained_on": "agent_eval_dev (80)",
+  "label": "local MedicalGPT answer fails (human label)",
+  "warning": "80 条样本训练，仅作冷启动；上线前需用两档模型实测标签重训"
+}

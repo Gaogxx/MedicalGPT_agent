@@ -1,0 +1,90 @@
+{
+  "sft": {
+    "medical_qa": {
+      "raw": 1961,
+      "after_clean": 1830,
+      "picked": 1716,
+      "target": 1716
+    },
+    "toolcall": {
+      "raw": 2971,
+      "after_clean": 2609,
+      "picked": 1560,
+      "target": 1560
+    },
+    "slot_mask": {
+      "raw": 250,
+      "after_clean": 250,
+      "picked": 250,
+      "target": 312
+    },
+    "ask_clarify": {
+      "raw": 120,
+      "after_clean": 1,
+      "picked": 1,
+      "target": 104
+    },
+    "obs_failure": {
+      "raw": 394,
+      "after_clean": 346,
+      "picked": 312,
+      "target": 312
+    },
+    "unknown_entity": {
+      "raw": 238,
+      "after_clean": 229,
+      "picked": 208,
+      "target": 208
+    },
+    "colloquial": {
+      "raw": 222,
+      "after_clean": 210,
+      "picked": 208,
+      "target": 208
+    },
+    "raft": {
+      "raw": 300,
+      "after_clean": 272,
+      "picked": 272,
+      "target": 312
+    },
+    "safety": {
+      "raw": 150,
+      "after_clean": 28,
+      "picked": 28,
+      "target": 208
+    },
+    "general_replay": {
+      "raw": 13,
+      "after_clean": 11,
+      "picked": 11,
+      "target": 260
+    },
+    "_summary": {
+      "train": 4191,
+      "val": 375,
+      "aug_share": 0.274,
+      "by_source": {
+        "medical_qa": 1716,
+        "toolcall": 1560,
+        "slot_mask": 250,
+        "ask_clarify": 1,
+        "obs_failure": 312,
+        "unknown_entity": 208,
+        "colloquial": 208,
+        "raft": 272,
+        "safety": 28,
+        "general_replay": 11
+      }
+    }
+  },
+  "dpo": {
+    "original_raw": 1500,
+    "original_after_clean": 65,
+    "counterfactual_available": 818,
+    "counterfactual_picked": 300,
+    "train": 330,
+    "val": 35,
+    "repaired_ungrounded_duration": 7
+  }
+}

@@ -1,0 +1,89 @@
+{
+ "sources": {
+  "A": "runtime/dsh-medical-plugins/src/index.ts @ git ee8fd11（DSH tool registry 版运行时知识表）",
+  "B": "training/scripts/build_toolcall_data.py @ git ee8fd11（造数脚本用来生成训练数据 observation 的知识表）"
+ },
+ "counts": {
+  "symptoms": {
+   "A": 10,
+   "B": 20,
+   "merged": 21
+  },
+  "drugs": {
+   "A": 5,
+   "B": 10,
+   "merged": 10
+  },
+  "guidelines": {
+   "A": 4,
+   "B": 9,
+   "merged": 9
+  }
+ },
+ "only_in_A": {
+  "symptoms": [
+   "恶心"
+  ],
+  "drugs": [],
+  "guidelines": []
+ },
+ "only_in_B": {
+  "symptoms": [
+   "乏力",
+   "便秘",
+   "呕吐",
+   "咽喉痛",
+   "失眠",
+   "皮疹",
+   "耳鸣",
+   "脱发",
+   "腰痛",
+   "腹痛",
+   "鼻塞"
+  ],
+  "drugs": [
+   "头孢",
+   "奥美拉唑",
+   "氨氯地平",
+   "氯雷他定",
+   "甲硝唑"
+  ],
+  "guidelines": [
+   "冠心病",
+   "感冒",
+   "湿疹",
+   "胃炎",
+   "脂肪肝"
+  ]
+ },
+ "conflicts": [
+  {
+   "section": "symptoms",
+   "key": "头晕",
+   "resolved_with": "B",
+   "diff": {
+    "confidence": {
+     "A": 0.5,
+     "B": 0.55
+    },
+    "possible_causes": {
+     "A": [
+      "体位性低血压",
+      "贫血",
+      "前庭功能紊乱"
+     ],
+     "B": [
+      "贫血",
+      "低血压",
+      "颈椎病",
+      "耳石症"
+     ]
+    },
+    "recommendation": {
+     "A": "避免突然站起，持续头晕请就医检查血压和血常规",
+     "B": "注意休息避免突然起身，频繁头晕请就医"
+    }
+   }
+  }
+ ]
+}

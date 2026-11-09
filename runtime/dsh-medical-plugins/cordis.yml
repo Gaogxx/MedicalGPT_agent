@@ -2,13 +2,15 @@
 # 目标：把 DSH 从"编码 agent"变成"纯医疗 agent"
 # - 禁用所有编码工具（bash/fs/web/subagent/workflow/todo/goal/skill）
 # - 禁用 agent-instructions（阻止注入 deepseek-harness 的 AGENTS.md）
-# - 注入医疗 system prompt + 加载 3 个医疗工具
+# - 注入医疗 system prompt
+# - 医疗工具改为 MCP：通过 @deepseek-ai/dsh-mcp-client 连接 Python MCP Server（medagent.mcp_servers.medical_server），
+#   不再用 ctx.tools.register 往 tool registry 里塞 TS 实现。模型看到的工具名为 mcp__medical__<tool>
 
-# 1. 默认模型 → vllm 训练模型
+# 1. 默认模型 → medagent 路由网关（后面是微调 MedicalGPT + 云端医疗大模型）；直连微调模型改成 vllm-medical / medical-agent
 - id: agent-default-model
   config:
-    provider: vllm-medical
-    model: medical-agent
+    provider: medagent-router
+    model: medical-router
 
 # 2. system prompt → 纯医疗 persona（去掉 harness 身份 + 编码指令）
 - id: system-prompt
@@ -17,7 +19,7 @@
     includeRuntimeContext: false
     personaPrefix: |
       你是一位专业的医疗助手。在回答患者问题时：
-      1. 优先使用工具（check_symptom / search_drug / search_guideline）获取准确信息，不要凭记忆回答
+      1. 优先使用工具（mcp__medical__check_symptom / search_drug / check_interaction / search_guideline / search_knowledge）获取准确信息，不要凭记忆回答
       2. 症状分析仅作参考，必须建议患者就医确认
       3. 药品信息必须查询工具获取，确保准确
       4. 涉及诊断、处方时必须明确告知需要医生确认
@@ -59,7 +61,27 @@
 - id: agent-instructions
   disabled: true
 
-# 5. 加载医疗工具插件
+# 5. 医疗工具：MCP 客户端（每个 MCP Server 一条）。字段见 deepseek-harness packages/mcp/mcp-client/README.zh.md
 - insert:
-    - id: dsh-medical-tools
-      name: '/root/autodl-tmp/deepseek-harness/scratch-plugin/src/index.ts'
+    - id: mcp-medical
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: medical
+        transport: stdio
+        command: /root/autodl-tmp/MedicalGPT_agent/.venv/bin/python
+        args: ['-m', 'medagent.mcp_servers.medical_server']
+        cwd: /root/autodl-tmp/MedicalGPT_agent
+        env:
+          MEDAGENT_STATE_DIR: /root/autodl-tmp/medagent_state   # 预约幂等状态落盘（SQLite）
+        toolCallTimeoutMs: 15000
+        startupTimeoutMs: 20000
+        failOnStartupError: true        # 医疗工具起不来就别以“无工具”状态对外服务
+        reconnect:
+          enabled: true
+          initialDelayMs: 500
+          maxDelayMs: 30000
+          maxAttempts: 10
+    # 也可以把 MCP Server 单独部署成 HTTP 服务（python -m medagent.mcp_servers.medical_server --http --port 8765）：
+    # - id: mcp-medical
+    #   name: '@deepseek-ai/dsh-mcp-client'
+    #   config: { serverName: medical, transport: streamable-http, url: 'http://127.0.0.1:8765/mcp' }

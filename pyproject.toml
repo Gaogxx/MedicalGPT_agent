@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medagent"
+version = "0.2.0"
+description = "Medical-GPT Agent runtime: MCP tools + RouteLLM routing + RAG + resilience layer"
+requires-python = ">=3.10"
+dependencies = [
+  "mcp>=2.0",          # MCP 官方 Python SDK（2.x：MCPServer / Client）
+  "httpx>=0.27",
+  "numpy>=1.26",
+  "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+redis = ["redis>=5"]
+rag = ["jieba>=0.42", "sentence-transformers>=3", "torch>=2.1"]
+judge = ["scikit-learn>=1.4"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "fakeredis[lua]>=2.20", "scikit-learn>=1.4", "jieba>=0.42"]
+
+[project.scripts]
+medagent = "medagent.cli:main"
+medagent-mcp = "medagent.mcp_servers.medical_server:main"
+medagent-gateway = "medagent.gateway:main"
+
+[tool.setuptools.packages.find]
+include = ["medagent*"]
+
+[tool.setuptools.package-data]
+"medagent.knowledge" = ["*.json", "sources/*.json"]
+"medagent.router" = ["artifacts/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

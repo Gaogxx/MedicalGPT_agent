@@ -1,0 +1,29 @@
+# SFT / DPO v3 配比（mix_v3.py 读取）。v2 的问题：去重后 DPO 只剩 330 对、安全样本 28 条、通用回放 11 条。
+# v3：补充真实数据（Huatuo / shibing624，Apache-2.0）+ 基于 2.4k 疾病 / 2.5k 药物实体的工具轨迹 + 组合生成的安全与追问样本。
+# 原则不变：真实数据为主（≥55%），合成样本有上限，同一问法模板 ≤ max_per_template，与所有评测集去污染，按模板分组切分。
+seed: 42
+val_ratio: 0.05
+max_per_template: 25
+near_dup_threshold: 0.8
+
+sft:
+  target_total: 26000
+  sources:                       # ratio = 目标占比；不够时按实际量，不重复采样
+    real_qa:      {ratio: 0.46, files: [supplement/sft_real_qa.jsonl, sft/medical_qa.jsonl]}
+    toolcall:     {ratio: 0.10, files: [sft/toolcall_symptom.jsonl, sft/toolcall_drug.jsonl, sft/toolcall_guideline.jsonl]}
+    toolcall_ext: {ratio: 0.17, files: [supplement/sft_toolcall_ext.jsonl]}
+    masked:       {ratio: 0.10, files: [augmented_v3/sft_slot_mask.jsonl, augmented_v3/sft_obs_failure.jsonl,
+                                        augmented_v3/sft_unknown_entity.jsonl, augmented_v3/sft_colloquial.jsonl]}
+    raft:         {ratio: 0.04, files: [augmented_v3/sft_raft.jsonl]}
+    safety:       {ratio: 0.06, files: [supplement/sft_safety.jsonl]}
+    clarify:      {ratio: 0.02, files: [supplement/sft_clarify.jsonl]}
+    general:      {ratio: 0.05, files: [supplement/sft_general.jsonl]}
+
+dpo:
+  max_per_template: 20
+  max_chosen_longer_share: 0.6   # 真实偏好对 72% 的 chosen 更长，平衡到 ≤60%；训练侧另建议长度归一化损失
+  sources:
+    real:           {cap: 4000, files: [supplement/dpo_real.jsonl]}                 # shibing624/medical reward 真实偏好对
+    original:       {cap: 200,  files: [reward/medical_dpo.jsonl, reward/toolcall_dpo.jsonl]}
+    counterfactual: {cap: 1200, files: [augmented_v3/dpo_counterfactual.jsonl]}
+    safety:         {cap: 600,  files: [supplement/dpo_safety.jsonl]}

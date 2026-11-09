@@ -1,0 +1,130 @@
+{
+  "duplicates": [
+    {
+      "set": "sft",
+      "n": 4191,
+      "exact_dup": 0,
+      "exact_dup_rate": 0.0,
+      "near_dup": 1020,
+      "near_dup_rate": 0.2434
+    },
+    {
+      "set": "dpo",
+      "n": 330,
+      "exact_dup": 0,
+      "exact_dup_rate": 0.0,
+      "near_dup": 11,
+      "near_dup_rate": 0.0333
+    },
+    {
+      "set": "opd",
+      "n": 0,
+      "exact_dup": 0,
+      "exact_dup_rate": 0.0,
+      "near_dup": 0,
+      "near_dup_rate": 0.0
+    }
+  ],
+  "leakage": {
+    "sft_eval_vs_train": {
+      "n_eval": 375,
+      "exact_overlap": 0,
+      "same_query": 0,
+      "near_query": 1,
+      "same_query_rate": 0.0,
+      "near_query_rate": 0.0027
+    },
+    "dpo_eval_vs_train": {
+      "n_eval": 35,
+      "exact_overlap": 0,
+      "same_query": 0,
+      "near_query": 1,
+      "same_query_rate": 0.0,
+      "near_query_rate": 0.0286
+    },
+    "opd_eval_vs_train": null,
+    "opd_vs_sft": null
+  },
+  "tool_args": {
+    "tool_calls": 2958,
+    "invalid_json": 0,
+    "ungrounded_duration": 3,
+    "ungrounded_duration_rate": 0.001,
+    "drug_arg_not_in_context": 0,
+    "drug_arg_not_in_context_rate": 0.0,
+    "examples": [
+      {
+        "type": "ungrounded_duration",
+        "query": "我发烧了，体温38.5度，已经，伴有头痛和乏力，没有咳嗽或流鼻涕。请问可能是什么原因？需要怎么处理？",
+        "arg": "3天"
+      },
+      {
+        "type": "ungrounded_duration",
+        "query": "我发烧了，体温38.5度，已经，还伴有头痛和全身酸痛，请问可能是什么原因？",
+        "arg": "3天"
+      },
+      {
+        "type": "ungrounded_duration",
+        "query": "我咳嗽已经持续了大约，刚开始是干咳，现在有点痰，痰是白色的，没有发烧，体温正常。请问可能是什么原因？需要去医院吗？",
+        "arg": "3天"
+      }
+    ]
+  },
+  "contamination": {
+    "raw_medical_qa": {
+      "non_medical": 13,
+      "rate": 0.0066,
+      "examples": [
+        "你是一个痴迷于爱伦·坡风格的诗人。",
+        "检查你的 Python 版本",
+        "你是火影忍者漫画中的鸣人。你的动作和言语举止像鸣人一样。但与其生活在忍者世界，你却生活在哈利波特小说",
+        "在柏林以Peppe Wutz和Räuber Hotzenplotz为主角拍一部stop-motion",
+        "你知道正则表达式吗？",
+        "给定一个具有不确定深度的JSON对象，该对象可以包含其他对象或数组，我想创建一个Javascript",
+        "在Python中lambda是什么？",
+        "为电影新闻分享提供建议的好名字",
+        "副作用反应的示例",
+        "K-12 计算机教育的教师为什么需要了解自动机理论（或者说，计算理论）？"
+      ]
+    },
+    "sft": {
+      "non_medical": 12,
+      "rate": 0.0029,
+      "examples": [
+        "副作用反应的示例",
+        "DevTools 无法加载源映射: 无法加载 chrome-extension://cfhdojbk",
+        "你是一个痴迷于爱伦·坡风格的诗人。",
+        "在柏林以Peppe Wutz和Räuber Hotzenplotz为主角拍一部stop-motion",
+        "你是火影忍者漫画中的鸣人。你的动作和言语举止像鸣人一样。但与其生活在忍者世界，你却生活在哈利波特小说",
+        "副作用反应的示例",
+        "DevTools 无法加载源映射: 无法加载 chrome-extension://cfhdojbk",
+        "检查你的 Python 版本",
+        "K-12 计算机教育的教师为什么需要了解自动机理论（或者说，计算理论）？",
+        "排除 MySQL 数据库速度缓慢的步骤。"
+      ]
+    }
+  },
+  "templates": {
+    "sft_toolcall": {
+      "unique_templates": 2247,
+      "n": 2578,
+      "unique_ratio": 0.8716,
+      "top5_share": 0.0186
+    },
+    "dpo": {
+      "unique_templates": 273,
+      "n": 330,
+      "unique_ratio": 0.8273,
+      "top5_share": 0.1242
+    }
+  },
+  "dpo_bias": {
+    "n": 330,
+    "chosen_eq_rejected": 0,
+    "chosen_longer_rate": 0.4424,
+    "median_len_chosen": 64.0,
+    "median_len_rejected": 82.0,
+    "unique_chosen_ratio": 0.4182,
+    "chosen_is_tool_call_rate": 0.2939
+  }
+}

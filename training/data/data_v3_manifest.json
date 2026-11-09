@@ -1,0 +1,104 @@
+{
+ "sft": {
+  "real_qa": {
+   "raw": 14974,
+   "after_clean": 14808,
+   "picked": 11960,
+   "target": 11960
+  },
+  "toolcall": {
+   "raw": 2971,
+   "after_clean": 2579,
+   "picked": 2579,
+   "target": 2600
+  },
+  "toolcall_ext": {
+   "raw": 4614,
+   "after_clean": 4581,
+   "picked": 4420,
+   "target": 4420
+  },
+  "masked": {
+   "raw": 2773,
+   "after_clean": 1437,
+   "picked": 1437,
+   "target": 2600
+  },
+  "raft": {
+   "raw": 1200,
+   "after_clean": 1166,
+   "picked": 1040,
+   "target": 1040
+  },
+  "safety": {
+   "raw": 1018,
+   "after_clean": 363,
+   "picked": 363,
+   "target": 1560
+  },
+  "clarify": {
+   "raw": 600,
+   "after_clean": 44,
+   "picked": 44,
+   "target": 520
+  },
+  "general": {
+   "raw": 1400,
+   "after_clean": 1400,
+   "picked": 1300,
+   "target": 1300
+  },
+  "_cross_source_dups_removed": 2480,
+  "_summary": {
+   "train": 19601,
+   "val": 1062,
+   "total": 20663,
+   "synthetic_share": 0.2784,
+   "real_share": 0.7216,
+   "by_bucket": {
+    "real_qa": 11959,
+    "toolcall": 1652,
+    "toolcall_ext": 4416,
+    "masked": 750,
+    "raft": 195,
+    "safety": 349,
+    "clarify": 42,
+    "general": 1300
+   }
+  }
+ },
+ "dpo": {
+  "real": {
+   "raw": 2752,
+   "after_clean": 1377,
+   "picked": 1377
+  },
+  "original": {
+   "raw": 1500,
+   "after_clean": 38,
+   "picked": 38
+  },
+  "counterfactual": {
+   "raw": 2517,
+   "after_clean": 1235,
+   "picked": 1200
+  },
+  "safety": {
+   "raw": 868,
+   "after_clean": 356,
+   "picked": 356
+  },
+  "_summary": {
+   "train": 2765,
+   "val": 206,
+   "total": 2971,
+   "by_bucket": {
+    "real": 1377,
+    "original": 38,
+    "counterfactual": 1200,
+    "safety": 356
+   }
+  }
+ },
+ "decontam_rejected": 1719
+}

@@ -1,0 +1,154 @@
+{
+  "duplicates": [
+    {
+      "set": "sft",
+      "n": 4945,
+      "exact_dup": 157,
+      "exact_dup_rate": 0.0317,
+      "near_dup": 1410,
+      "near_dup_rate": 0.2851
+    },
+    {
+      "set": "dpo",
+      "n": 1500,
+      "exact_dup": 886,
+      "exact_dup_rate": 0.5907,
+      "near_dup": 1335,
+      "near_dup_rate": 0.89
+    },
+    {
+      "set": "opd",
+      "n": 1500,
+      "exact_dup": 235,
+      "exact_dup_rate": 0.1567,
+      "near_dup": 479,
+      "near_dup_rate": 0.3193
+    }
+  ],
+  "leakage": {
+    "sft_eval_vs_train": {
+      "n_eval": 150,
+      "exact_overlap": 150,
+      "same_query": 150,
+      "near_query": 150,
+      "same_query_rate": 1.0,
+      "near_query_rate": 1.0
+    },
+    "dpo_eval_vs_train": {
+      "n_eval": 150,
+      "exact_overlap": 150,
+      "same_query": 150,
+      "near_query": 150,
+      "same_query_rate": 1.0,
+      "near_query_rate": 1.0
+    },
+    "opd_eval_vs_train": {
+      "n_eval": 150,
+      "exact_overlap": 150,
+      "same_query": 150,
+      "near_query": 150,
+      "same_query_rate": 1.0,
+      "near_query_rate": 1.0
+    },
+    "opd_vs_sft": {
+      "n_eval": 1500,
+      "exact_overlap": 750,
+      "same_query": 750,
+      "near_query": 750,
+      "same_query_rate": 0.5,
+      "near_query_rate": 0.5
+    }
+  },
+  "tool_args": {
+    "tool_calls": 4771,
+    "invalid_json": 0,
+    "ungrounded_duration": 547,
+    "ungrounded_duration_rate": 0.1147,
+    "drug_arg_not_in_context": 0,
+    "drug_arg_not_in_context_rate": 0.0,
+    "examples": [
+      {
+        "type": "ungrounded_duration",
+        "query": "医生您好，我从昨天开始一直呕吐，今天早上还吐了两次，没有发烧，但感觉胃里很不舒服。请问可能是什么原因？",
+        "arg": "1-2天"
+      },
+      {
+        "type": "ungrounded_duration",
+        "query": "我胃痛，该怎么办？",
+        "arg": "3天"
+      },
+      {
+        "type": "ungrounded_duration",
+        "query": "请问腹泻是怎么回事，需要吃药吗？",
+        "arg": "3天"
+      },
+      {
+        "type": "ungrounded_duration",
+        "query": "请问腹痛是怎么回事，需要吃药吗？",
+        "arg": "3天"
+      },
+      {
+        "type": "ungrounded_duration",
+        "query": "请问腹泻是怎么回事，需要吃药吗？",
+        "arg": "3天"
+      }
+    ]
+  },
+  "contamination": {
+    "raw_medical_qa": {
+      "non_medical": 13,
+      "rate": 0.0066,
+      "examples": [
+        "你是一个痴迷于爱伦·坡风格的诗人。",
+        "检查你的 Python 版本",
+        "你是火影忍者漫画中的鸣人。你的动作和言语举止像鸣人一样。但与其生活在忍者世界，你却生活在哈利波特小说",
+        "在柏林以Peppe Wutz和Räuber Hotzenplotz为主角拍一部stop-motion",
+        "你知道正则表达式吗？",
+        "给定一个具有不确定深度的JSON对象，该对象可以包含其他对象或数组，我想创建一个Javascript",
+        "在Python中lambda是什么？",
+        "为电影新闻分享提供建议的好名字",
+        "副作用反应的示例",
+        "K-12 计算机教育的教师为什么需要了解自动机理论（或者说，计算理论）？"
+      ]
+    },
+    "sft": {
+      "non_medical": 13,
+      "rate": 0.0026,
+      "examples": [
+        "你是一个痴迷于爱伦·坡风格的诗人。",
+        "检查你的 Python 版本",
+        "你是火影忍者漫画中的鸣人。你的动作和言语举止像鸣人一样。但与其生活在忍者世界，你却生活在哈利波特小说",
+        "在柏林以Peppe Wutz和Räuber Hotzenplotz为主角拍一部stop-motion",
+        "你知道正则表达式吗？",
+        "给定一个具有不确定深度的JSON对象，该对象可以包含其他对象或数组，我想创建一个Javascript",
+        "在Python中lambda是什么？",
+        "为电影新闻分享提供建议的好名字",
+        "副作用反应的示例",
+        "K-12 计算机教育的教师为什么需要了解自动机理论（或者说，计算理论）？"
+      ]
+    }
+  },
+  "templates": {
+    "sft_toolcall": {
+      "unique_templates": 2718,
+      "n": 2971,
+      "unique_ratio": 0.9148,
+      "top5_share": 0.0582
+    },
+    "dpo": {
+      "unique_templates": 12,
+      "n": 1500,
+      "unique_ratio": 0.008,
+      "top5_share": 0.754
+    }
+  },
+  "dpo_bias": {
+    "n": 1500,
+    "chosen_eq_rejected": 0,
+    "chosen_longer_rate": 0.8427,
+    "median_len_chosen": 71.0,
+    "median_len_rejected": 42.5,
+    "unique_chosen_ratio": 0.0213,
+    "chosen_is_tool_call_rate": 0.7
+  }
+}

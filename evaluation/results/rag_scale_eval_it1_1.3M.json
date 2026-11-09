@@ -1,0 +1,28 @@
+{
+ "index_docs": 1337567,
+ "queries": 1000,
+ "index_size_gb": 1.49,
+ "bm25_all_terms": {
+  "recall@5": 0.153,
+  "recall@10": 0.223,
+  "recall@50": 0.395,
+  "mrr@10": 0.1143,
+  "latency_ms_p50": 45.2,
+  "latency_ms_p95": 168.5
+ },
+ "bm25_df_pruned": {
+  "recall@5": 0.146,
+  "recall@10": 0.204,
+  "recall@50": 0.356,
+  "mrr@10": 0.1043,
+  "latency_ms_p50": 12.2,
+  "latency_ms_p95": 33.0
+ },
+ "rerank_sample": {
+  "n": 300,
+  "bm25_recall@5_same_sample": 0.1667,
+  "rerank_recall@5": 0.2933,
+  "rerank_mrr@10": 0.2253,
+  "rerank_latency_ms_mean(50 docs)": 998.9
+ }
+}

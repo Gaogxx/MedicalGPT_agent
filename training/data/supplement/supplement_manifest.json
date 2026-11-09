@@ -1,0 +1,14 @@
+{
+ "seed": 7,
+ "counts": {
+  "sft_real_qa": 13000,
+  "sft_toolcall_ext": 4614,
+  "sft_clarify": 600,
+  "sft_general": 1400,
+  "sft_safety": 1018,
+  "dpo_safety": 868,
+  "dpo_real": 2752
+ },
+ "decontam_texts": 1655,
+ "decontam_rejected": 83
+}
