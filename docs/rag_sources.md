@@ -21,20 +21,32 @@
 ## 本地索引怎么建
 
 ```bash
-# 1. 下载语料（约 2.3GB，HF 镜像可用 HF_ENDPOINT=https://hf-mirror.com）
-python - <<'PY'
-from huggingface_hub import hf_hub_download
-for repo, f in [("FreedomIntelligence/huatuo_encyclopedia_qa", "train_datasets.jsonl"),
-                ("FreedomIntelligence/huatuo_encyclopedia_qa", "test_datasets.jsonl"),
-                ("FreedomIntelligence/huatuo_knowledge_graph_qa", "train_datasets.jsonl"),
-                ("FreedomIntelligence/Huatuo26M-Lite", "format_data.jsonl"),
-                ("shibing624/medical", "finetune/train_zh_0.json")]:
-    hf_hub_download(repo, f, repo_type="dataset", local_dir=f".cache/corpus/{repo.replace('/', '__')}")
-PY
-# 2. 建索引（8 进程 jieba 切词，329 万篇约 2.5 分钟）
-python -m medagent.rag.scalable build
-# 3. 运行时自动发现 .cache/index/medical.fts5（或设 MEDAGENT_FTS5_INDEX），search_knowledge 多出 fts5 一路召回
+# 一步完成：下载 5 个语料文件（约 2.2GB，已下载的跳过）+ 建索引（8 进程 jieba 切词，329 万篇约 2.5 分钟，约 3.3GB）
+python -m medagent.rag.scalable setup            # 国内网络：HF_ENDPOINT=https://hf-mirror.com python -m ...
+# 也可以分开做
+python -m medagent.rag.scalable download         # --with-training 额外下载训练数据补充用的语料
+python -m medagent.rag.scalable build            # --only huatuo_enc,huatuo_kg 只建部分来源；--limit-per-source 1000 先试小规模
+# 检查
+python -m medagent.rag.scalable search "甲状腺结节需要手术吗"
 ```
+
+运行时自动发现 `.cache/index/medical.fts5`（或用 `MEDAGENT_FTS5_INDEX` 指定路径），`search_knowledge` 多出 fts5 一路召回；
+MCP 资源 `kb://sources` 会显示 `local_fulltext.available: true`。
+
+索引和语料不放进 GitHub：单文件超过 GitHub 100MB 上限，而且能用上面的命令在几分钟内重建。语料许可均为 Apache-2.0，
+如需分发现成索引，建议放 Hugging Face 数据集仓库并附上许可与出处。
+
+## 在线文献怎么用
+
+不需要下载或建索引，PubMed / Europe PMC / openFDA / MedlinePlus 都是检索时实时调用对方公开接口，不需要 API key：
+
+```bash
+export MEDAGENT_ONLINE_KB=1      # search_knowledge 增加 online 一路召回
+```
+
+需要能访问 eutils.ncbi.nlm.nih.gov、www.ebi.ac.uk、api.fda.gov、wsearch.nlm.nih.gov。每个源各自熔断、超时（Europe PMC 10 秒，其余 4 秒），
+任一源不可用只少一路召回，不影响回答。PubMed 未带 API key 时官方限速约 3 次/秒，高并发上线需申请 NCBI API key。
+在线文献多为英文摘要，中文问题主要靠本地索引。
 
 ## 规模评测（`evaluation/run_rag_scale_eval.py`）
 

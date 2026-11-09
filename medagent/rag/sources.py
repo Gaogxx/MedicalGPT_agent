@@ -142,5 +142,5 @@ class FTS5Source:
         hits = self.index.search(query, k=k)
         docs = self.index.get([h[0] for h in hits])
         for d in docs:
-            d.id = f"fts5:{d.id}"
+            d.id = f"fts5:{d.meta['rowid']}"   # 用 rowid 做 ID：MCP 资源 kb://doc/fts5:<rowid> 可按主键直接取全文
         return docs

@@ -201,9 +201,42 @@ def iter_open_corpora(limit_per_source: int | None = None, include_test_answers:
             yield f"shibing_med:{i}", "shibing624/medical", (r.get("instruction", "") + r.get("input", ""))[:200], r.get("output", "")
 
 
+# 本地全文索引用到的公开语料（Hugging Face 数据集，均为 Apache-2.0）。约 2.2GB。
+INDEX_FILES = [
+    ("FreedomIntelligence/huatuo_encyclopedia_qa", "train_datasets.jsonl"),
+    ("FreedomIntelligence/huatuo_encyclopedia_qa", "test_datasets.jsonl"),
+    ("FreedomIntelligence/huatuo_knowledge_graph_qa", "train_datasets.jsonl"),
+    ("FreedomIntelligence/Huatuo26M-Lite", "format_data.jsonl"),
+    ("shibing624/medical", "finetune/train_zh_0.json"),
+]
+# 训练数据补充（training/scripts/data_pipeline/supplement.py）额外用到的
+TRAINING_FILES = [
+    ("shibing624/medical", "reward/train.json"),
+    ("shibing624/alpaca-zh", "alpaca_gpt4_data_zh.json"),
+]
+
+
+def download(groups: tuple[str, ...] = ("index",)) -> list[Path]:
+    """下载语料到 .cache/corpus/<org>__<name>/。已下载的文件会跳过；国内网络可设 HF_ENDPOINT=https://hf-mirror.com。"""
+    from huggingface_hub import hf_hub_download
+    files = (INDEX_FILES if "index" in groups else []) + (TRAINING_FILES if "training" in groups else [])
+    out = []
+    for repo, f in files:
+        local = CORPUS / repo.replace("/", "__")
+        p = hf_hub_download(repo, f, repo_type="dataset", local_dir=str(local))
+        print(f"ok  {repo}/{f}  {Path(p).stat().st_size / 1e6:,.0f} MB", flush=True)
+        out.append(Path(p))
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
+    d = sub.add_parser("download", help="下载语料（默认只下建索引用的 ~2.2GB）")
+    d.add_argument("--with-training", action="store_true", help="同时下载训练数据补充用的语料")
+    st = sub.add_parser("setup", help="一步完成：下载语料 + 建索引")
+    st.add_argument("--out", default=str(ROOT / ".cache" / "index" / "medical.fts5"))
+    st.add_argument("--workers", type=int, default=8)
     b = sub.add_parser("build")
     b.add_argument("--out", default=str(ROOT / ".cache" / "index" / "medical.fts5"))
     b.add_argument("--limit-per-source", type=int)
@@ -214,6 +247,15 @@ def main() -> None:
     s.add_argument("query")
     s.add_argument("--index", default=str(ROOT / ".cache" / "index" / "medical.fts5"))
     args = ap.parse_args()
+    if args.cmd == "download":
+        download(("index", "training") if args.with_training else ("index",))
+        return
+    if args.cmd == "setup":
+        download(("index",))
+        if Path(args.out).exists():
+            Path(args.out).unlink()
+        print(json.dumps(FTS5Index(args.out).build(iter_open_corpora(), workers=args.workers), ensure_ascii=False))
+        return
     if args.cmd == "build":
         if Path(args.out).exists() and not args.append:
             Path(args.out).unlink()

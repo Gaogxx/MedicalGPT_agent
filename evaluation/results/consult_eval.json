@@ -1,0 +1,144 @@
+{
+ "note": "Mock 模型：验证编排机制（拆分 / 隔离 / 检查点 / 续跑），不代表真实模型回答质量",
+ "trigger": {
+  "dev_total": 80,
+  "triggered": 7,
+  "triggered_queries": [
+   "我发烧了，先分析症状再推荐药",
+   "我关节痛，先分析原因再查布洛芬",
+   "我头痛，先查症状再查布洛芬的副作用",
+   "我腹泻，先查症状再查药",
+   "糖尿病有什么药和饮食建议",
+   "我嗓子疼，先查症状再查阿莫西林",
+   "先告诉我头痛怎么办，再告诉我发烧怎么办，再告诉我咳嗽怎么办"
+  ],
+  "multi_part_must_cover": 6,
+  "multi_part_triggered": 6
+ },
+ "completeness": {
+  "n": 6,
+  "single_agent": 0.6666666666666666,
+  "complex_consult": 0.8333333333333334,
+  "rows": [
+   {
+    "query": "我发烧了，先分析症状再推荐药",
+    "single_ok": false,
+    "consult_ok": false,
+    "sub_questions": [
+     "我发烧了分析症状",
+     "我发烧了推荐药"
+    ]
+   },
+   {
+    "query": "我关节痛，先分析原因再查布洛芬",
+    "single_ok": true,
+    "consult_ok": true,
+    "sub_questions": [
+     "我关节痛分析原因",
+     "我关节痛查布洛芬"
+    ]
+   },
+   {
+    "query": "我头痛，先查症状再查布洛芬的副作用",
+    "single_ok": true,
+    "consult_ok": true,
+    "sub_questions": [
+     "我头痛查症状",
+     "查布洛芬的副作用"
+    ]
+   },
+   {
+    "query": "我腹泻，先查症状再查药",
+    "single_ok": true,
+    "consult_ok": true,
+    "sub_questions": [
+     "我腹泻查症状",
+     "我腹泻查药"
+    ]
+   },
+   {
+    "query": "糖尿病有什么药和饮食建议",
+    "single_ok": false,
+    "consult_ok": true,
+    "sub_questions": [
+     "糖尿病有什么药",
+     "糖尿病饮食建议"
+    ]
+   },
+   {
+    "query": "我嗓子疼，先查症状再查阿莫西林",
+    "single_ok": true,
+    "consult_ok": true,
+    "sub_questions": [
+     "我嗓子疼查症状 咽喉痛",
+     "我嗓子疼查阿莫西林 咽喉痛"
+    ]
+   }
+  ]
+ },
+ "crash_resume": [
+  {
+   "crash_at": "route",
+   "first_failed": true,
+   "resumed_done": true,
+   "model_calls": 4,
+   "clean_model_calls": 4,
+   "replay_model_calls": 0,
+   "replayed": true
+  },
+  {
+   "crash_at": "plan",
+   "first_failed": true,
+   "resumed_done": true,
+   "model_calls": 4,
+   "clean_model_calls": 4,
+   "replay_model_calls": 0,
+   "replayed": true
+  },
+  {
+   "crash_at": "work",
+   "first_failed": true,
+   "resumed_done": true,
+   "model_calls": 4,
+   "clean_model_calls": 4,
+   "replay_model_calls": 0,
+   "replayed": true
+  },
+  {
+   "crash_at": "aggregate",
+   "first_failed": true,
+   "resumed_done": true,
+   "model_calls": 4,
+   "clean_model_calls": 4,
+   "replay_model_calls": 0,
+   "replayed": true
+  },
+  {
+   "crash_at": "verify",
+   "first_failed": true,
+   "resumed_done": true,
+   "model_calls": 4,
+   "clean_model_calls": 4,
+   "replay_model_calls": 0,
+   "replayed": true
+  },
+  {
+   "crash_at": "respond",
+   "first_failed": true,
+   "resumed_done": true,
+   "model_calls": 4,
+   "clean_model_calls": 4,
+   "replay_model_calls": 0,
+   "replayed": true
+  },
+  {
+   "crash_at": "work:w1（w0 已完成）",
+   "first_failed": true,
+   "resumed_done": true,
+   "model_calls": 6,
+   "clean_model_calls": 4,
+   "replay_model_calls": null,
+   "replayed": null
+  }
+ ]
+}

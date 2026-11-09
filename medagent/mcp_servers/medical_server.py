@@ -42,7 +42,8 @@ INSTRUCTIONS = """医疗工具服务器（tools + resources + prompts）。规�
 2. 症状先 check_symptom；疾病管理建议用 search_guideline；以上都查不到时用 search_knowledge 检索知识库。
 3. 工具返回 found=false 时如实告知查不到，不得编造。
 4. book_appointment 有副作用，必须传 idempotency_key；失败重试时复用同一个 key。
-5. 知识库条目也可按 URI 直接读取：kb://drug/{name}、kb://symptom/{name}、kb://guideline/{topic}、kb://catalog。"""
+5. 知识库条目也可按 URI 直接读取：kb://drug/{name}、kb://symptom/{name}、kb://guideline/{topic}、kb://catalog；
+   search_knowledge 命中的本地文档可用 kb://doc/{id} 读全文；kb://sources 是各知识源的规模与可用状态。"""
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, idempotent_hint=True, destructive_hint=False, open_world_hint=False)
 SIDE_EFFECT = ToolAnnotations(read_only_hint=False, idempotent_hint=True, destructive_hint=False, open_world_hint=True)
@@ -181,6 +182,53 @@ def build_server() -> MCPServer:
     @server.resource("kb://guideline/{topic}", description="单个指南条目", mime_type="application/json")
     def kb_guideline(topic: str) -> dict[str, Any]:
         return _entry("guidelines", topic)
+
+    # 知识源概况与检索命中的全文。注意分工：
+    #   - “查”（按问题检索本地 329 万篇索引 / 在线文献）是工具 search_knowledge——要模型决定查什么、带参数、结果随查询变；
+    #   - “读”（按 ID 取某一篇的全文、看知识源状态）是资源——地址固定、只读、宿主不经模型就能读。
+    #   在线文献（PubMed / Europe PMC）存在对方服务器上，只能实时检索，不做成资源。
+    def _fts5_index():
+        if "fts5" not in rag_holder:
+            from ..rag.pipeline import REPO_ROOT
+            path = os.environ.get("MEDAGENT_FTS5_INDEX", str(REPO_ROOT / ".cache" / "index" / "medical.fts5"))
+            if not os.path.exists(path):
+                rag_holder["fts5"] = None
+            else:
+                from ..rag.scalable import FTS5Index
+                rag_holder["fts5"] = FTS5Index(path)
+        return rag_holder["fts5"]
+
+    @server.resource("kb://sources", description="知识源三层的规模与可用状态（精选 KB / Wikidata 实体层 / 本地全文索引 / 在线文献）",
+                     mime_type="application/json")
+    def kb_sources() -> dict[str, Any]:
+        from ..knowledge.ext import load_ext
+        from ..rag.pipeline import REPO_ROOT
+        ext = load_ext()
+        idx = _fts5_index()
+        online = os.environ.get("MEDAGENT_ONLINE_KB") == "1"
+        return {
+            "curated": {"symptoms": len(kb.symptoms), "drugs": len(kb.drugs), "guidelines": len(kb.guidelines),
+                        "version": kb.version},
+            "wikidata": {"available": ext is not None,
+                         **({"diseases": len(ext.diseases), "drugs": len(ext.drugs)} if ext is not None else {})},
+            "local_fulltext": {"available": idx is not None,
+                               "path": os.path.relpath(idx.path, REPO_ROOT) if idx is not None else None,
+                               "build": "python -m medagent.rag.scalable setup"},
+            "online": {"enabled": online, "sources": ["openFDA", "PubMed", "Europe PMC", "MedlinePlus"],
+                       "enable": "MEDAGENT_ONLINE_KB=1"},
+        }
+
+    @server.resource("kb://doc/{doc_id}", description="search_knowledge 命中的本地全文索引文档全文（doc_id 形如 fts5:123）",
+                     mime_type="application/json")
+    def kb_doc(doc_id: str) -> dict[str, Any]:
+        from mcp.server.mcpserver.exceptions import ResourceNotFoundError
+        m = re.fullmatch(r"(?:fts5:)?(\d+)", doc_id)
+        idx = _fts5_index()
+        docs = idx.get([int(m.group(1))]) if (m and idx is not None) else []
+        if not docs:
+            raise ResourceNotFoundError(f"kb://doc/{doc_id} not found")
+        d = docs[0]
+        return {"id": f"fts5:{m.group(1)}", "source": d.source, "origin_id": d.id, "title": d.title, "text": d.text}
 
     # ------------------------------------------------------------------ Prompts：可复用的提示词模板
     # 提示词放在 Server 端，和工具定义同一处维护；Python 编排器通过 prompts/get 取用。

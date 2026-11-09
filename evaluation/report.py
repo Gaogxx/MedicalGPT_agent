@@ -255,9 +255,24 @@ def main() -> None:
             v = st[k]
             out.append(f"| {name} | {v['n']} | {pct(v['qwen3.5-2b']['auto_pass_rate'])} | {pct(v['medicalgpt_2026_09']['auto_pass_rate'])} | {pct(v['qwen3.5-2b_block_rate'])} |")
         out += ["", f"平均每题 {st['mean_seconds']}s（{st['mean_tokens_per_sec']} tok/s，M5 MPS bf16）。回答原文在 results/small_tier_eval.json。", ""]
+    ce = j("consult_eval.json")
+    if ce:
+        t, c = ce["trigger"], ce["completeness"]
+        out += ["## 12. 复杂问诊 MCP 工具（编排器包成工具，DSH 模式也有 worker 隔离与逐步检查点）", "",
+                f"> {ce['note']}。", "",
+                "| 指标 | 结果 |", "|---|---|",
+                f"| dev 80 题中网关触发复杂问诊 | {t['triggered']} 题（标注了多个必答要点的 {t['multi_part_must_cover']} 题全部触发） |",
+                f"| 多意图子问题覆盖率：单 agent → 复杂问诊 | {pct(c['single_agent'])} → {pct(c['complex_consult'])}（{c['n']} 题） |"]
+        for r in ce["crash_resume"]:
+            extra = (f"，再调用一次的模型调用 {r['replay_model_calls']} 次（直接返回检查点）" if r["replay_model_calls"] is not None
+                     else "，只重做 w1，w0 不重跑")
+            out.append(f"| 崩溃注入 @ {r['crash_at']} | 重试续跑完成：{'是' if r['resumed_done'] else '否'}；"
+                       f"模型调用 {r['model_calls']} 次（无故障 {r['clean_model_calls']} 次）{extra} |")
+        out += ["", "it 记录：评测中发现单 agent 基线 0/6——编排器在子问题多于 worker 上限时会截断丢题（N65），修复后基线 66.7%；"
+                "“糖尿病有什么药和饮食建议”触发了复杂问诊却拆不开（N66），修复后复杂问诊 66.7% → 83.3%。", ""]
     issues_md, issue_summary = render_issues()
     (ROOT / "evaluation" / "ISSUES.md").write_text(issues_md, encoding="utf-8")
-    out += ["## 12. 问题记录（现象 → 根因 → 解决 → 指标）", "", *issue_summary, "",
+    out += ["## 13. 问题记录（现象 → 根因 → 解决 → 指标）", "", *issue_summary, "",
             "逐条明细见 [ISSUES.md](ISSUES.md)，原始数据 `evaluation/issues_log.json`。", ""]
     (ROOT / "evaluation" / "ITERATIONS.md").write_text("\n".join(out), encoding="utf-8")
     print("\n".join(out))
