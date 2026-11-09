@@ -3,7 +3,7 @@
 解析成带标注的 dev 集 evaluation/datasets/agent_eval_dev.jsonl。
 
 人工标注（label）：逐条阅读回答后按统一标准判定，标准见 evaluation/README.md「标注规范」。
-本版标注由 Claude 完成，建议项目负责人复核（尤其 weak_refusal / incomplete 两类边界样本）。
+weak_refusal / incomplete 两类边界样本建议由医生复核。
 """
 from __future__ import annotations
 

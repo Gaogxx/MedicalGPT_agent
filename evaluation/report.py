@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""从 evaluation/results/*.json 生成 evaluation/ITERATIONS.md（README 里的指标表也从这里复制）。
+"""从 evaluation/results/*.json 生成本地报告 evaluation/ITERATIONS.md / ISSUES.md（两者与 issues_log.json 不入库）。
 所有数字都来自结果文件；重新跑任一 run_*_eval.py 后再执行本脚本即可刷新。"""
 from __future__ import annotations
 
@@ -56,7 +56,10 @@ def _bucket(status: str) -> str:
 
 
 def render_issues() -> tuple[str, list[str]]:
-    data = json.loads((ROOT / "evaluation" / "issues_log.json").read_text(encoding="utf-8"))["issues"]
+    p = ROOT / "evaluation" / "issues_log.json"
+    if not p.exists():
+        return "# 问题记录\n\n（本地没有 evaluation/issues_log.json）\n", ["（本地没有问题记录）"]
+    data = json.loads(p.read_text(encoding="utf-8"))["issues"]
     from collections import Counter
     by_status = Counter(_bucket(i["status"]) for i in data)
     by_area = Counter(i["area"] for i in data)

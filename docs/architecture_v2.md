@@ -53,7 +53,7 @@ DSH ──带工具结果再请求──▶ 网关：结果 status=done → 原�
 - **中断续跑**：run_id = hash(问题 + 历史)。工具报错或超时（Server 重启、模型超时）时网关用相同参数再发一次，命中同一个检查点：
   已完成的 worker 不重跑。人为暂停（`medagent pause <run_id> --consult`）的问诊不会被重试自动续跑，要传 `resume=true`。
 - **代价**：一次复杂问诊有 2~3 个 worker、每个 worker 1~3 次模型调用，比单 agent 慢；cordis.yml 里给它单独设了 180 秒超时。
-- 评测（Mock 模型，验证机制）：`evaluation/run_consult_eval.py`，结果见 ITERATIONS.md 第 12 节。
+- 评测：`evaluation/run_consult_eval.py`，结果在 `evaluation/results/consult_eval.json`。
 
 ## 3. MCP：Server 提供什么、谁在调度
 
@@ -118,7 +118,8 @@ Qwen3.5 在 2026-02 已发布（小尺寸 0.8B / 2B / 4B / 9B / 27B 稠密 + 35B
 - **训练栈**：MedicalGPT 的模板与工具格式（`--template_name qwen --tool_format default`）是按 Qwen2.5 对话格式写的；Qwen3.5 是多模态架构（`Qwen3_5ForConditionalGeneration`）、带思考模式，LoRA 目标层与模板都要重新适配；
 - **显存**：AutoDL 单卡 24GB。Qwen3.5-9B bf16 权重约 19GB，LoRA 训练要上 QLoRA；OPD 阶段还要同时放 32B 教师；
 - 同行做法：百川 M2 的报告也说明 SFT 基座选 Qwen2.5 而不是 Qwen3 是出于训练稳定性。
-建议：v3 数据就绪后用 Qwen3.5-4B（或 9B + QLoRA）做一次对照训练，在同一套 dev / 独立测试集上比，再决定是否换基座——
+重训方案见 [train_qwen35_plan.md](train_qwen35_plan.md)（Qwen3.5-9B + QLoRA，训练 / 推理格式逐字对齐）。
+建议：v3 数据就绪后用 Qwen3.5-9B（或 4B）做一次对照训练，在同一套 dev / 独立测试集上比，再决定是否换基座——
 “更新”不等于“在你的数据和任务上更好”，要用评测说话。
 
 强模型候选（以各平台控制台的模型 ID 为准）：Baichuan-M3（[模型卡](https://huggingface.co/baichuan-inc/Baichuan-M3-235B) 自报 HealthBench 领先，厂商自报）、
@@ -126,7 +127,7 @@ DeepSeek；可替换为开源的蚂蚁 [AntAngelMed](https://github.com/MedAIBas
 
 ## 5. RAG
 
-| 环节 | 实现 | 评测结论（见 evaluation/ITERATIONS.md §4） |
+| 环节 | 实现 | 评测结论（`evaluation/results/rag_eval_*.json`） |
 |---|---|---|
 | 查询改写 | 去口语噪声、口语/商品名→标准术语“追加式”扩展、复合问题拆子查询；可选小模型改写 | KB 集 Recall@5 0.856→0.956 |
 | 多路召回 | BM25（jieba 词 + 字二元组）、向量（bge-small-zh）、KG 实体链接直达 KB、在线源（openFDA / PubMed / MedlinePlus，各自熔断） | 三路 RRF 让真实问答集 Recall@5 0.48→0.60 |
