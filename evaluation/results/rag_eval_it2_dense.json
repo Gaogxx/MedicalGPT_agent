@@ -1,0 +1,144 @@
+{
+ "R0 BM25": {
+  "kb": {
+   "recall@5": 0.2333,
+   "mrr@10": 0.1922,
+   "ndcg@10": 0.2066,
+   "latency_ms_mean": 0.2,
+   "evidence_tokens_top5": 765
+  },
+  "qa": {
+   "recall@5": 0.4833,
+   "mrr@10": 0.4505,
+   "ndcg@10": 0.4609,
+   "latency_ms_mean": 0.9,
+   "evidence_tokens_top5": 887.2
+  }
+ },
+ "R1 +KG路由(RRF)": {
+  "kb": {
+   "recall@5": 0.8556,
+   "mrr@10": 0.8889,
+   "ndcg@10": 0.8631,
+   "latency_ms_mean": 0.2,
+   "evidence_tokens_top5": 687.6
+  },
+  "qa": {
+   "recall@5": 0.4766,
+   "mrr@10": 0.4143,
+   "ndcg@10": 0.4331,
+   "latency_ms_mean": 0.9,
+   "evidence_tokens_top5": 859.7
+  }
+ },
+ "R2 +查询改写": {
+  "kb": {
+   "recall@5": 0.9556,
+   "mrr@10": 0.9611,
+   "ndcg@10": 0.9479,
+   "latency_ms_mean": 0.2,
+   "evidence_tokens_top5": 609.9
+  },
+  "qa": {
+   "recall@5": 0.4799,
+   "mrr@10": 0.4145,
+   "ndcg@10": 0.4319,
+   "latency_ms_mean": 0.9,
+   "evidence_tokens_top5": 860.4
+  }
+ },
+ "R3 +词法重排(改写前查询,纯重排)": {
+  "kb": {
+   "recall@5": 0.3444,
+   "mrr@10": 0.322,
+   "ndcg@10": 0.3733,
+   "latency_ms_mean": 3.1,
+   "evidence_tokens_top5": 808.6
+  },
+  "qa": {
+   "recall@5": 0.3861,
+   "mrr@10": 0.3617,
+   "ndcg@10": 0.3694,
+   "latency_ms_mean": 4.6,
+   "evidence_tokens_top5": 1011.7
+  }
+ },
+ "R4 词法重排修正(扩展查询+融合分)": {
+  "kb": {
+   "recall@5": 0.6556,
+   "mrr@10": 0.4987,
+   "ndcg@10": 0.5796,
+   "latency_ms_mean": 3.0,
+   "evidence_tokens_top5": 726.1
+  },
+  "qa": {
+   "recall@5": 0.3861,
+   "mrr@10": 0.3621,
+   "ndcg@10": 0.3697,
+   "latency_ms_mean": 4.6,
+   "evidence_tokens_top5": 1010.9
+  }
+ },
+ "R4b +KG命中置顶": {
+  "kb": {
+   "recall@5": 0.9556,
+   "mrr@10": 0.9667,
+   "ndcg@10": 0.9524,
+   "latency_ms_mean": 3.0,
+   "evidence_tokens_top5": 680.2
+  },
+  "qa": {
+   "recall@5": 0.3761,
+   "mrr@10": 0.336,
+   "ndcg@10": 0.3486,
+   "latency_ms_mean": 4.4,
+   "evidence_tokens_top5": 981.2
+  }
+ },
+ "R5 +向量召回(bge-small-zh, 三路RRF)": {
+  "kb": {
+   "recall@5": 0.9556,
+   "mrr@10": 0.9657,
+   "ndcg@10": 0.9565,
+   "latency_ms_mean": 5.4,
+   "evidence_tokens_top5": 587.0
+  },
+  "qa": {
+   "recall@5": 0.5977,
+   "mrr@10": 0.5199,
+   "ndcg@10": 0.5455,
+   "latency_ms_mean": 5.8,
+   "evidence_tokens_top5": 822.7
+  }
+ },
+ "R7 +抽取式压缩(600 token)": {
+  "kb": {
+   "recall@5": 0.9556,
+   "mrr@10": 0.9657,
+   "ndcg@10": 0.9565,
+   "latency_ms_mean": 6.9,
+   "evidence_tokens_top5": 367.7,
+   "gold_kept_after_compress": 1.0
+  },
+  "qa": {
+   "recall@5": 0.5977,
+   "mrr@10": 0.5199,
+   "ndcg@10": 0.5455,
+   "latency_ms_mean": 8.6,
+   "evidence_tokens_top5": 415.4,
+   "gold_kept_after_compress": 0.9842
+  }
+ },
+ "cache": {
+  "queries": 200,
+  "hit_rate": 0.5,
+  "stats": {
+   "exact_hit": 100,
+   "semantic_hit": 0,
+   "miss": 100,
+   "redis_errors": 0
+  },
+  "latency_ms_hit": 0.01,
+  "latency_ms_miss": 13.9
+ }
+}

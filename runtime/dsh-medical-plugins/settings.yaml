@@ -1,15 +1,27 @@
 # DeepSeek Harness 用户设置 —— 医疗 Agent 部署
 # 位置：$DSH_HOME/settings.yaml（默认 ~/.dsh/settings.yaml）
 #
-# 连本地 vllm 服务的训练模型（OpenAI Chat Completions 兼容 API）
+# v2：DSH 的模型请求先进 medagent 路由网关（python -m medagent.gateway --port 9000），
+#     由网关在“微调 MedicalGPT（vLLM :8000）”与云端医疗大模型之间路由，并做熔断/重试/校验/安全关。
+#     网关后面的模型清单在仓库 configs/models.yaml。
 llm-pi-ai:
   providers:
+    medagent-router:
+      apiKeyEnv: MEDAGENT_GATEWAY_KEY       # 网关本身不校验，填任意值即可：export MEDAGENT_GATEWAY_KEY=dummy
+      api: openai-completions
+      baseURL: http://127.0.0.1:9000/v1
+      models:
+        - id: medical-router
+          name: Medical Router (MedicalGPT-7B ⇄ Baichuan-M3/DeepSeek)
+          contextWindow: 16384
+          maxTokens: 2048
+    # 直连微调模型（绕过网关，仅用于对比 / 排障）
     vllm-medical:
       apiKeyEnv: VLLM_API_KEY
       api: openai-completions
       baseURL: http://127.0.0.1:8000/v1
       models:
         - id: medical-agent
-          name: Medical Agent (Qwen2.5-7B OPD)
+          name: Medical Agent (Qwen2.5-7B OPD, direct)
           contextWindow: 16384
           maxTokens: 2048

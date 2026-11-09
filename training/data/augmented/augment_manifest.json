@@ -1,0 +1,13 @@
+{
+  "seed": 42,
+  "counts": {
+    "repaired": 1,
+    "slot_mask": 250,
+    "ask_clarify": 120,
+    "obs_failure": 394,
+    "unknown_entity": 238,
+    "colloquial": 222,
+    "raft": 300,
+    "dpo_counterfactual": 882
+  }
+}

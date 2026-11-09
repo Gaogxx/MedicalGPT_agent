@@ -1,0 +1,153 @@
+{
+ "E7_attribution": {
+  "accuracy": 1.0,
+  "runs": 66,
+  "confusion(kind/responsible)": {
+   "llm:network": {
+    "network/upstream": 6
+   },
+   "llm:timeout": {
+    "timeout/upstream": 6
+   },
+   "llm:rate_limit": {
+    "rate_limit/upstream": 6
+   },
+   "llm:external": {
+    "external/upstream": 6
+   },
+   "llm:auth": {
+    "auth/upstream": 6
+   },
+   "llm:silent_empty": {
+    "silent/model": 6
+   },
+   "llm:tool_leak": {
+    "model/model": 6
+   },
+   "tool:network": {
+    "network/upstream": 6
+   },
+   "tool:external": {
+    "external/upstream": 6
+   },
+   "tool:silent_empty": {
+    "silent/upstream": 6
+   },
+   "tool:bad_args": {
+    "param/model": 6
+   }
+  }
+ },
+ "E1_naive": {
+  "config": "naive",
+  "n": 60,
+  "success_rate": 0.8333,
+  "attribution_acc": 0.2,
+  "attributed_runs": 30,
+  "latency_ms_mean": 6.0,
+  "injected": {
+   "llm": {},
+   "llm_local": {
+    "timeout": 6,
+    "network": 13,
+    "tool_leak": 9,
+    "silent_empty": 4,
+    "rate_limit": 6,
+    "external": 4
+   },
+   "tool": {
+    "silent_empty": 4,
+    "network": 1,
+    "external": 1
+   }
+  }
+ },
+ "E1_full": {
+  "config": "full",
+  "n": 60,
+  "success_rate": 0.9,
+  "attribution_acc": 0.5909,
+  "attributed_runs": 22,
+  "latency_ms_mean": 8.9,
+  "injected": {
+   "llm": {
+    "rate_limit": 2,
+    "network": 4,
+    "tool_leak": 1
+   },
+   "llm_local": {
+    "timeout": 7,
+    "network": 16,
+    "tool_leak": 12,
+    "silent_empty": 9,
+    "rate_limit": 7,
+    "external": 7
+   },
+   "tool": {
+    "silent_empty": 8,
+    "network": 3,
+    "external": 1
+   }
+  }
+ },
+ "E2_naive": {
+  "config": "naive(new key per retry)",
+  "requests": 20,
+  "succeeded": 20,
+  "appointments_created": 21,
+  "duplicate_bookings": 1,
+  "lost_responses_injected": 12
+ },
+ "E2_full": {
+  "config": "full(idempotency_key)",
+  "requests": 20,
+  "succeeded": 19,
+  "appointments_created": 20,
+  "duplicate_bookings": 0,
+  "lost_responses_injected": 12
+ },
+ "E3_saga": {
+  "saga_ok": false,
+  "log": [
+   "book:done",
+   "notify:failed",
+   "book:compensated"
+  ],
+  "appointment_status_after": "cancelled",
+  "compensation_failure_log": [
+   "book:done",
+   "notify:failed",
+   "book:compensation_failed"
+  ],
+  "dead_letters": 1
+ },
+ "E4_pause_crash": {
+  "pause": {
+   "first": "paused",
+   "paused_at": "aggregate",
+   "after_resume": "done",
+   "answer_has_facts": true
+  },
+  "crash": {
+   "status_at_crash": "running",
+   "node_at_crash": "verify",
+   "resumed": "done",
+   "tool_calls_before": 1,
+   "tool_calls_after_resume": 1,
+   "work_not_redone": true
+  }
+ },
+ "E5_occ": {
+  "stale_write_rejected": true,
+  "merged_after_retry": [
+   "A",
+   "B"
+  ]
+ },
+ "E6_redis_breaker": {
+  "instance_b_sees_open": "open",
+  "instance_b_fast_fails": true,
+  "redis_down_degraded_state": "open",
+  "degraded_events": 1
+ }
+}

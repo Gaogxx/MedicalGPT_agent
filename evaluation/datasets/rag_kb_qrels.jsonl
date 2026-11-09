@@ -1,0 +1,45 @@
+{"id": "k00", "query": "拉肚子两天了怎么办", "relevant": ["kb:symptom:腹泻"]}
+{"id": "k01", "query": "嗓子疼得咽不下东西", "relevant": ["kb:symptom:咽喉痛"]}
+{"id": "k02", "query": "美林有什么副作用", "relevant": ["kb:drug:布洛芬"]}
+{"id": "k03", "query": "泰诺林一天最多吃几次", "relevant": ["kb:drug:对乙酰氨基酚"]}
+{"id": "k04", "query": "血压高平时吃饭注意什么", "relevant": ["kb:guideline:高血压"]}
+{"id": "k05", "query": "血糖高首选什么药", "relevant": ["kb:guideline:糖尿病", "kb:drug:二甲双胍"]}
+{"id": "k06", "query": "尿酸高能喝啤酒吗", "relevant": ["kb:guideline:痛风"]}
+{"id": "k07", "query": "肚子疼还发烧", "relevant": ["kb:symptom:腹痛", "kb:symptom:发烧"]}
+{"id": "k08", "query": "晚上老是睡不着", "relevant": ["kb:symptom:失眠"]}
+{"id": "k09", "query": "鼻子不通气流鼻涕", "relevant": ["kb:symptom:鼻塞"]}
+{"id": "k10", "query": "浑身没劲是怎么回事", "relevant": ["kb:symptom:乏力"]}
+{"id": "k11", "query": "腰疼得直不起来", "relevant": ["kb:symptom:腰痛"]}
+{"id": "k12", "query": "最近掉头发特别多", "relevant": ["kb:symptom:脱发"]}
+{"id": "k13", "query": "大便干拉不出来", "relevant": ["kb:symptom:便秘"]}
+{"id": "k14", "query": "耳朵嗡嗡响", "relevant": ["kb:symptom:耳鸣"]}
+{"id": "k15", "query": "起了一身红疹子很痒", "relevant": ["kb:symptom:皮疹"]}
+{"id": "k16", "query": "站起来眼前发黑头昏", "relevant": ["kb:symptom:头晕"]}
+{"id": "k17", "query": "早上起来关节疼", "relevant": ["kb:symptom:关节痛"]}
+{"id": "k18", "query": "喘不上气胸口痛", "relevant": ["kb:symptom:呼吸困难", "kb:symptom:胸痛"]}
+{"id": "k19", "query": "想吐没胃口", "relevant": ["kb:symptom:恶心"]}
+{"id": "k20", "query": "格华止饭前吃还是饭后吃", "relevant": ["kb:drug:二甲双胍"]}
+{"id": "k21", "query": "洛赛克能长期吃吗", "relevant": ["kb:drug:奥美拉唑"]}
+{"id": "k22", "query": "开瑞坦会犯困吗", "relevant": ["kb:drug:氯雷他定"]}
+{"id": "k23", "query": "络活喜脚肿正常吗", "relevant": ["kb:drug:氨氯地平"]}
+{"id": "k24", "query": "灭滴灵能喝酒吗", "relevant": ["kb:drug:甲硝唑"]}
+{"id": "k25", "query": "青霉素过敏能吃阿莫仙吗", "relevant": ["kb:drug:阿莫西林"]}
+{"id": "k26", "query": "头孢和酒", "relevant": ["kb:drug:头孢"]}
+{"id": "k27", "query": "拜阿司匹灵每天吃多少", "relevant": ["kb:drug:阿司匹林"]}
+{"id": "k28", "query": "止痛药有哪些", "relevant": ["kb:drug:布洛芬", "kb:drug:对乙酰氨基酚"]}
+{"id": "k29", "query": "退烧药哪个好", "relevant": ["kb:drug:布洛芬", "kb:drug:对乙酰氨基酚"]}
+{"id": "k30", "query": "降压药有什么副作用", "relevant": ["kb:drug:氨氯地平"]}
+{"id": "k31", "query": "抗过敏药推荐", "relevant": ["kb:drug:氯雷他定"]}
+{"id": "k32", "query": "胃药能和布洛芬一起吃吗", "relevant": ["kb:drug:奥美拉唑", "kb:drug:布洛芬"]}
+{"id": "k33", "query": "血脂高怎么调理", "relevant": ["kb:guideline:高血脂"]}
+{"id": "k34", "query": "伤风感冒要吃抗生素吗", "relevant": ["kb:guideline:感冒"]}
+{"id": "k35", "query": "湿疹怎么护理", "relevant": ["kb:guideline:湿疹"]}
+{"id": "k36", "query": "脂肪肝要注意什么", "relevant": ["kb:guideline:脂肪肝"]}
+{"id": "k37", "query": "慢性胃炎饮食", "relevant": ["kb:guideline:胃炎"]}
+{"id": "k38", "query": "冠状动脉粥样硬化性心脏病患者运动", "relevant": ["kb:guideline:冠心病"]}
+{"id": "k39", "query": "二型糖尿病饮食控制", "relevant": ["kb:guideline:糖尿病"]}
+{"id": "k40", "query": "我头痛，先查症状再查布洛芬的副作用", "relevant": ["kb:symptom:头痛", "kb:drug:布洛芬"]}
+{"id": "k41", "query": "我咳嗽，有什么药能缓解", "relevant": ["kb:symptom:咳嗽"]}
+{"id": "k42", "query": "我发烧了，先分析症状再推荐药", "relevant": ["kb:symptom:发烧"]}
+{"id": "k43", "query": "糖尿病有什么药和饮食建议", "relevant": ["kb:guideline:糖尿病", "kb:drug:二甲双胍"]}
+{"id": "k44", "query": "我嗓子疼，先查症状再查阿莫西林", "relevant": ["kb:symptom:咽喉痛", "kb:drug:阿莫西林"]}

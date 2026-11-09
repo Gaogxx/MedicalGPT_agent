@@ -1,0 +1,112 @@
+{
+ "R0 BM25": {
+  "kb": {
+   "recall@5": 0.1889,
+   "mrr@10": 0.1643,
+   "ndcg@10": 0.1666,
+   "latency_ms_mean": 0.3,
+   "evidence_tokens_top5": 663.2
+  },
+  "qa": {
+   "recall@5": 0.9982,
+   "mrr@10": 0.9983,
+   "ndcg@10": 0.9984,
+   "latency_ms_mean": 1.2,
+   "evidence_tokens_top5": 668.0
+  }
+ },
+ "R1 +KG路由(RRF)": {
+  "kb": {
+   "recall@5": 0.8556,
+   "mrr@10": 0.8889,
+   "ndcg@10": 0.8631,
+   "latency_ms_mean": 0.2,
+   "evidence_tokens_top5": 589.3
+  },
+  "qa": {
+   "recall@5": 0.9982,
+   "mrr@10": 0.9075,
+   "ndcg@10": 0.9319,
+   "latency_ms_mean": 1.2,
+   "evidence_tokens_top5": 646.1
+  }
+ },
+ "R2 +查询改写": {
+  "kb": {
+   "recall@5": 0.9556,
+   "mrr@10": 0.9611,
+   "ndcg@10": 0.9479,
+   "latency_ms_mean": 0.3,
+   "evidence_tokens_top5": 556.2
+  },
+  "qa": {
+   "recall@5": 0.9982,
+   "mrr@10": 0.9043,
+   "ndcg@10": 0.9294,
+   "latency_ms_mean": 1.2,
+   "evidence_tokens_top5": 647.2
+  }
+ },
+ "R3 +词法重排(改写前查询,纯重排)": {
+  "kb": {
+   "recall@5": 0.3222,
+   "mrr@10": 0.2803,
+   "ndcg@10": 0.3182,
+   "latency_ms_mean": 3.1,
+   "evidence_tokens_top5": 688.4
+  },
+  "qa": {
+   "recall@5": 0.9982,
+   "mrr@10": 0.9983,
+   "ndcg@10": 0.9988,
+   "latency_ms_mean": 4.3,
+   "evidence_tokens_top5": 737.9
+  }
+ },
+ "R4 词法重排修正(扩展查询+融合分)": {
+  "kb": {
+   "recall@5": 0.5222,
+   "mrr@10": 0.3901,
+   "ndcg@10": 0.4941,
+   "latency_ms_mean": 3.1,
+   "evidence_tokens_top5": 639.1
+  },
+  "qa": {
+   "recall@5": 0.9982,
+   "mrr@10": 0.9983,
+   "ndcg@10": 0.9988,
+   "latency_ms_mean": 4.3,
+   "evidence_tokens_top5": 735.8
+  }
+ },
+ "R7 +抽取式压缩(600 token)": {
+  "kb": {
+   "recall@5": 0.5222,
+   "mrr@10": 0.3901,
+   "ndcg@10": 0.4941,
+   "latency_ms_mean": 5.1,
+   "evidence_tokens_top5": 367.4,
+   "gold_kept_after_compress": 0.96
+  },
+  "qa": {
+   "recall@5": 0.9982,
+   "mrr@10": 0.9983,
+   "ndcg@10": 0.9988,
+   "latency_ms_mean": 6.6,
+   "evidence_tokens_top5": 369.1,
+   "gold_kept_after_compress": 1.0
+  }
+ },
+ "cache": {
+  "queries": 200,
+  "hit_rate": 0.5,
+  "stats": {
+   "exact_hit": 100,
+   "semantic_hit": 0,
+   "miss": 100,
+   "redis_errors": 0
+  },
+  "latency_ms_hit": 0.0,
+  "latency_ms_miss": 6.4
+ }
+}

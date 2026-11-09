@@ -1,0 +1,695 @@
+{
+ "version": "2026.11.05-2",
+ "symptoms": {
+  "乏力": {
+   "possible_causes": [
+    "贫血",
+    "甲状腺功能减退",
+    "慢性疲劳"
+   ],
+   "recommendation": "保证睡眠和营养，持续乏力请就医检查",
+   "urgency": "low",
+   "confidence": 0.5
+  },
+  "便秘": {
+   "possible_causes": [
+    "饮食纤维不足",
+    "肠道功能紊乱",
+    "药物影响"
+   ],
+   "recommendation": "增加蔬果和饮水，长期便秘请就医",
+   "urgency": "low",
+   "confidence": 0.55
+  },
+  "关节痛": {
+   "possible_causes": [
+    "骨关节炎",
+    "类风湿关节炎",
+    "痛风"
+   ],
+   "recommendation": "避免过度活动，可就医行风湿免疫相关检查",
+   "urgency": "low",
+   "confidence": 0.5
+  },
+  "发烧": {
+   "possible_causes": [
+    "流行性感冒",
+    "病毒性感染",
+    "细菌性感染"
+   ],
+   "recommendation": "多饮水休息，体温超过38.5℃可遵医嘱退烧，持续高热需就医",
+   "urgency": "medium",
+   "confidence": 0.7
+  },
+  "呕吐": {
+   "possible_causes": [
+    "急性胃肠炎",
+    "食物中毒",
+    "妊娠反应"
+   ],
+   "recommendation": "注意补液，频繁呕吐或脱水请及时就医",
+   "urgency": "medium",
+   "confidence": 0.55
+  },
+  "呼吸困难": {
+   "possible_causes": [
+    "哮喘发作",
+    "心力衰竭",
+    "肺栓塞"
+   ],
+   "recommendation": "呼吸困难为急症，请立即拨打120",
+   "urgency": "emergency",
+   "confidence": 0.8
+  },
+  "咳嗽": {
+   "possible_causes": [
+    "上呼吸道感染",
+    "支气管炎",
+    "过敏性咳嗽"
+   ],
+   "recommendation": "注意休息多饮水，持续超过2周请就医行胸片检查",
+   "urgency": "low",
+   "confidence": 0.55
+  },
+  "咽喉痛": {
+   "possible_causes": [
+    "急性咽炎",
+    "扁桃体炎",
+    "上呼吸道感染"
+   ],
+   "recommendation": "多饮水，避免辛辣刺激，持续加重请就医",
+   "urgency": "low",
+   "confidence": 0.6
+  },
+  "失眠": {
+   "possible_causes": [
+    "焦虑",
+    "压力过大",
+    "睡眠习惯不良"
+   ],
+   "recommendation": "保持规律作息，睡前放松，长期失眠请就医",
+   "urgency": "low",
+   "confidence": 0.5
+  },
+  "头晕": {
+   "possible_causes": [
+    "贫血",
+    "低血压",
+    "颈椎病",
+    "耳石症"
+   ],
+   "recommendation": "注意休息避免突然起身，频繁头晕请就医",
+   "urgency": "medium",
+   "confidence": 0.55
+  },
+  "头痛": {
+   "possible_causes": [
+    "偏头痛",
+    "紧张性头痛",
+    "高血压"
+   ],
+   "recommendation": "建议休息观察，如持续超过3天或加重请就医",
+   "urgency": "medium",
+   "confidence": 0.65
+  },
+  "皮疹": {
+   "possible_causes": [
+    "过敏",
+    "湿疹",
+    "接触性皮炎"
+   ],
+   "recommendation": "避免抓挠和接触可疑过敏原，加重请就医",
+   "urgency": "medium",
+   "confidence": 0.55
+  },
+  "耳鸣": {
+   "possible_causes": [
+    "神经性耳鸣",
+    "中耳炎",
+    "梅尼埃病"
+   ],
+   "recommendation": "避免噪音刺激，持续耳鸣请就医耳鼻喉科",
+   "urgency": "low",
+   "confidence": 0.5
+  },
+  "胃痛": {
+   "possible_causes": [
+    "胃炎",
+    "消化性溃疡",
+    "功能性消化不良"
+   ],
+   "recommendation": "避免刺激性食物，规律饮食，持续疼痛或黑便请就医",
+   "urgency": "medium",
+   "confidence": 0.55
+  },
+  "胸痛": {
+   "possible_causes": [
+    "心绞痛",
+    "心肌梗死",
+    "胸膜炎"
+   ],
+   "recommendation": "胸痛可能为急症，请立即就医或拨打120",
+   "urgency": "emergency",
+   "confidence": 0.75
+  },
+  "脱发": {
+   "possible_causes": [
+    "脂溢性脱发",
+    "精神压力",
+    "营养缺乏"
+   ],
+   "recommendation": "规律作息减轻压力，严重脱发请就医皮肤科",
+   "urgency": "low",
+   "confidence": 0.5
+  },
+  "腰痛": {
+   "possible_causes": [
+    "腰肌劳损",
+    "腰椎间盘突出",
+    "肾结石"
+   ],
+   "recommendation": "注意休息避免久坐弯腰，持续疼痛请就医",
+   "urgency": "low",
+   "confidence": 0.5
+  },
+  "腹泻": {
+   "possible_causes": [
+    "急性胃肠炎",
+    "消化不良",
+    "食物不耐受"
+   ],
+   "recommendation": "注意补充水分和电解质，频繁腹泻或便血请及时就医",
+   "urgency": "medium",
+   "confidence": 0.6
+  },
+  "腹痛": {
+   "possible_causes": [
+    "急性胃肠炎",
+    "肠痉挛",
+    "消化性溃疡"
+   ],
+   "recommendation": "避免刺激性食物，持续剧痛或伴发热请及时就医",
+   "urgency": "medium",
+   "confidence": 0.55
+  },
+  "鼻塞": {
+   "possible_causes": [
+    "感冒",
+    "过敏性鼻炎",
+    "鼻窦炎"
+   ],
+   "recommendation": "注意保暖休息，可用生理盐水清洗鼻腔，持续不缓解请就医",
+   "urgency": "low",
+   "confidence": 0.6
+  },
+  "恶心": {
+   "possible_causes": [
+    "胃肠功能紊乱",
+    "消化不良",
+    "妊娠反应"
+   ],
+   "recommendation": "清淡饮食，注意休息，持续恶心呕吐请就医",
+   "urgency": "low",
+   "confidence": 0.5
+  }
+ },
+ "drugs": {
+  "二甲双胍": {
+   "name": "二甲双胍",
+   "generic_name": "Metformin",
+   "indications": "2型糖尿病一线降糖药",
+   "contraindications": "严重肾功能不全、酮症酸中毒、缺氧性疾病禁用",
+   "dosage": "遵医嘱，成人起始0.5g，一日2次",
+   "side_effects": "胃肠道反应、乳酸酸中毒（罕见）",
+   "interactions": [],
+   "pregnancy_category": "B"
+  },
+  "头孢": {
+   "name": "头孢类抗生素",
+   "generic_name": "Cephalosporin",
+   "indications": "敏感菌所致的呼吸道、泌尿道等感染",
+   "contraindications": "头孢菌素过敏者禁用",
+   "dosage": "遵医嘱",
+   "side_effects": "过敏反应、胃肠道反应",
+   "interactions": [],
+   "pregnancy_category": "B"
+  },
+  "奥美拉唑": {
+   "name": "奥美拉唑",
+   "generic_name": "Omeprazole",
+   "indications": "胃酸相关性疾病，如胃溃疡、反流性食管炎",
+   "contraindications": "对本品过敏者禁用",
+   "dosage": "遵医嘱，成人常用20mg，一日1次",
+   "side_effects": "头痛、腹泻、恶心",
+   "interactions": [
+    "华法林"
+   ],
+   "pregnancy_category": "C"
+  },
+  "对乙酰氨基酚": {
+   "name": "对乙酰氨基酚",
+   "generic_name": "Paracetamol",
+   "indications": "解热镇痛，用于感冒发热、头痛、关节痛等",
+   "contraindications": "严重肝肾功能不全者禁用，对本品过敏者禁用",
+   "dosage": "成人一次0.5g，一日不超过2g",
+   "side_effects": "偶见皮疹、恶心，过量可致肝损伤",
+   "interactions": [
+    "华法林"
+   ],
+   "pregnancy_category": "B"
+  },
+  "布洛芬": {
+   "name": "布洛芬",
+   "generic_name": "Ibuprofen",
+   "indications": "缓解轻至中度疼痛，如头痛、关节痛、牙痛、痛经",
+   "contraindications": "对本品过敏者禁用，孕妇禁用，严重肝肾功能不全者禁用",
+   "dosage": "成人一次1片（0.2g），一日3次，饭后服用",
+   "side_effects": "胃肠道不适、恶心、头晕、皮疹",
+   "interactions": [
+    "阿司匹林",
+    "华法林",
+    "甲氨蝶呤"
+   ],
+   "pregnancy_category": "C"
+  },
+  "氨氯地平": {
+   "name": "氨氯地平",
+   "generic_name": "Amlodipine",
+   "indications": "高血压、心绞痛",
+   "contraindications": "对本品过敏者禁用，严重低血压者禁用",
+   "dosage": "遵医嘱，成人常用5mg，一日1次",
+   "side_effects": "踝部水肿、头痛、面部潮红",
+   "interactions": [],
+   "pregnancy_category": "C"
+  },
+  "氯雷他定": {
+   "name": "氯雷他定",
+   "generic_name": "Loratadine",
+   "indications": "过敏性鼻炎、慢性荨麻疹等过敏性疾病",
+   "contraindications": "对本品过敏者禁用",
+   "dosage": "成人一次10mg，一日1次",
+   "side_effects": "嗜睡、口干、乏力",
+   "interactions": [],
+   "pregnancy_category": "B"
+  },
+  "甲硝唑": {
+   "name": "甲硝唑",
+   "generic_name": "Metronidazole",
+   "indications": "厌氧菌感染、滴虫病、阿米巴病",
+   "contraindications": "对本品过敏者、妊娠早期禁用",
+   "dosage": "遵医嘱",
+   "side_effects": "恶心、口腔金属味",
+   "interactions": [],
+   "pregnancy_category": "B"
+  },
+  "阿司匹林": {
+   "name": "阿司匹林",
+   "generic_name": "Aspirin",
+   "indications": "解热镇痛、抗血小板聚集",
+   "contraindications": "活动性消化道溃疡出血者禁用，对本品过敏者禁用，儿童病毒感染时禁用",
+   "dosage": "遵医嘱，抗血小板常用75-100mg/日",
+   "side_effects": "胃肠道刺激、出血风险、过敏反应",
+   "interactions": [
+    "布洛芬",
+    "华法林",
+    "甲氨蝶呤"
+   ],
+   "pregnancy_category": "D"
+  },
+  "阿莫西林": {
+   "name": "阿莫西林",
+   "generic_name": "Amoxicillin",
+   "indications": "敏感菌所致的呼吸道、泌尿道等感染",
+   "contraindications": "青霉素过敏者禁用",
+   "dosage": "遵医嘱，成人常用0.5g，一日3次",
+   "side_effects": "过敏反应、胃肠道不适、皮疹",
+   "interactions": [
+    "华法林"
+   ],
+   "pregnancy_category": "B"
+  }
+ },
+ "guidelines": {
+  "冠心病": {
+   "topic": "冠心病",
+   "content": "控制血压血脂血糖、戒烟、抗血小板和他汀治疗为基础，胸痛发作及时就医。",
+   "source": "《冠心病防治指南》",
+   "year": 2023
+  },
+  "感冒": {
+   "topic": "普通感冒",
+   "content": "多为病毒感染，具有自限性，一般1-2周自愈；多饮水休息，对症处理，无需抗生素。",
+   "source": "《普通感冒规范诊治专家共识》",
+   "year": 2012
+  },
+  "湿疹": {
+   "topic": "湿疹",
+   "content": "避免接触刺激物和过敏原，注意皮肤保湿，可外用糖皮质激素；严重或反复发作请就医皮肤科。",
+   "source": "《湿疹诊疗指南》",
+   "year": 2020
+  },
+  "痛风": {
+   "topic": "痛风",
+   "content": "限制高嘌呤食物（动物内脏、海鲜、啤酒），多饮水，急性期使用非甾体抗炎药或秋水仙碱，缓解期降尿酸治疗。",
+   "source": "《中国高尿酸血症与痛风诊疗指南》",
+   "year": 2019
+  },
+  "糖尿病": {
+   "topic": "2型糖尿病",
+   "content": "二甲双胍为一线首选降糖药；合并动脉粥样硬化性心血管疾病或高风险者可优先选择SGLT2抑制剂或GLP-1受体激动剂。",
+   "source": "《中国2型糖尿病防治指南》",
+   "year": 2020
+  },
+  "胃炎": {
+   "topic": "慢性胃炎",
+   "content": "规律饮食，避免辛辣刺激和酒精，必要时使用抑酸药和胃黏膜保护剂。",
+   "source": "《慢性胃炎诊疗指南》",
+   "year": 2022
+  },
+  "脂肪肝": {
+   "topic": "脂肪肝",
+   "content": "控制饮食、增加运动、减轻体重是基础；戒酒，控制血脂血糖。",
+   "source": "《非酒精性脂肪性肝病防治指南》",
+   "year": 2018
+  },
+  "高血压": {
+   "topic": "高血压",
+   "content": "低盐饮食（每日食盐<5g）、控制体重、戒烟限酒、增加蔬果和钾摄入、减少饱和脂肪；规律服药并监测血压。",
+   "source": "《中国高血压防治指南》",
+   "year": 2023
+  },
+  "高血脂": {
+   "topic": "高血脂",
+   "content": "生活方式干预（低脂饮食、运动、控制体重）为基础；他汀类药物为降脂首选。",
+   "source": "《中国血脂管理指南》",
+   "year": 2023
+  }
+ },
+ "meta": {
+  "built": "2026-11-05",
+  "builder": "medagent/knowledge/build_kb.py",
+  "merge_rule": "A ∪ B，冲突以 B（训练数据所用）为准",
+  "reviewed_entries": 0,
+  "warning": "规则表来自原仓库手写内容，非权威数据库导入；上线前需医生/药师审核"
+ },
+ "provenance": {
+  "symptoms:乏力": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:便秘": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:关节痛": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:发烧": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:呕吐": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:呼吸困难": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:咳嗽": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:咽喉痛": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:失眠": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:头晕": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:头痛": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:皮疹": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:耳鸣": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:胃痛": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:胸痛": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:脱发": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:腰痛": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:腹泻": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:腹痛": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:鼻塞": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "symptoms:恶心": {
+   "from": [
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "drugs:二甲双胍": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "drugs:头孢": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "drugs:奥美拉唑": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "drugs:对乙酰氨基酚": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "drugs:布洛芬": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "drugs:氨氯地平": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "drugs:氯雷他定": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "drugs:甲硝唑": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "drugs:阿司匹林": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "drugs:阿莫西林": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "guidelines:冠心病": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "guidelines:感冒": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "guidelines:湿疹": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "guidelines:痛风": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "guidelines:糖尿病": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "guidelines:胃炎": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "guidelines:脂肪肝": {
+   "from": [
+    "B"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "guidelines:高血压": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  },
+  "guidelines:高血脂": {
+   "from": [
+    "B",
+    "A"
+   ],
+   "reviewed": false,
+   "note": "原仓库手写规则表，未经医学审核"
+  }
+ }
+}
