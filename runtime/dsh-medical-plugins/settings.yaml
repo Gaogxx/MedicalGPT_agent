@@ -2,7 +2,7 @@
 # 位置：$DSH_HOME/settings.yaml（默认 ~/.dsh/settings.yaml）
 #
 # v2：DSH 的模型请求先进 medagent 路由网关（python -m medagent.gateway --port 9000），
-#     由网关在“微调 MedicalGPT（vLLM :8000）”与云端医疗大模型之间路由，并做熔断/重试/校验/安全关。
+#     由网关在小模型（Qwen3.5-2B）、微调 MedicalGPT（vLLM :8000）、云端医疗大模型三档之间路由，并做熔断/重试/校验/安全关。
 #     网关后面的模型清单在仓库 configs/models.yaml。
 llm-pi-ai:
   providers:
@@ -12,7 +12,7 @@ llm-pi-ai:
       baseURL: http://127.0.0.1:9000/v1
       models:
         - id: medical-router
-          name: Medical Router (MedicalGPT-7B ⇄ Baichuan-M3/DeepSeek)
+          name: Medical Router (Qwen3.5-2B / 微调 MedicalGPT / Baichuan-M3→DeepSeek)
           contextWindow: 16384
           maxTokens: 2048
     # 直连微调模型（绕过网关，仅用于对比 / 排障）
@@ -22,6 +22,6 @@ llm-pi-ai:
       baseURL: http://127.0.0.1:8000/v1
       models:
         - id: medical-agent
-          name: Medical Agent (Qwen2.5-7B OPD, direct)
+          name: Medical Agent (微调 MedicalGPT, direct)
           contextWindow: 16384
           maxTokens: 2048
