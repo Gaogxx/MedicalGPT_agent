@@ -1,17 +1,19 @@
-"""安全优先的路由策略（两档回答模型 + 一个控制面小模型）。
+"""安全优先的路由策略。
 
-为什么不是“小/中/大”三档回答：
-  - 医疗回答的错误代价不对称：小模型（0.5~2B）省下的钱远不够抵它多出来的幻觉风险；
-  - 本地 7B MedicalGPT 已在自有 GPU 上，边际成本≈0，再往下切一档没有成本收益；
-  - 小模型放在“控制面”（路由特征 / 查询改写 / 上下文压缩 / 静默失败判别）收益最大且风险可控。
-所以：回答模型 = local（MedicalGPT-7B，默认/兜底） vs strong（云端医疗大模型，按需升级），小模型不直接回答。
+两个路由器：
+  - SafetyFirstRouter：两档（local = 微调 MedicalGPT-7B，strong = 云端医疗大模型）；
+  - TieredRouter：三档，在两档基础上加 small（Qwen3.5-2B），只接通过门控的概念/科普题。
+    2026-11-05 版本只有两档、小模型只做控制面；2026-11-09 实测 Qwen3.5-2B 在门控题上 10/10 通过后加了 small 档
+    （evaluation/results/small_tier_eval.json）。配置里有 small 档模型时 cli/gateway 自动用 TieredRouter。
 
 决策顺序（前面的规则一旦命中就不再看后面）：
   1. 急症 / 危机   → 确定性急救提示立即下发（P0 快路径），解释部分走 strong
   2. 高风险意图     → strong（拒绝开方/诊断的话术质量与边界把握更稳）
   3. RouteLLM MF 打分 P(本地模型不达标)：≥ 阈值 → strong，否则 local
+     （MF 只在 local / strong 之间二选一；目前用 80 条人工标签冷启动训练）
   4. 预算闸门：会话成本超上限 → 只在 1/2 时用 strong
-  5. 可用性：目标层熔断打开时由 ModelPool 自动跨层兜底（strong ⇄ local）
+  5. 仅 TieredRouter：判为 local 且通过 is_simple_question 门控（规则，不是学出来的）→ small
+  6. 可用性：目标层熔断打开时由 ModelPool 自动跨层兜底（small → local → strong，strong ⇄ local）
 """
 from __future__ import annotations
 
@@ -28,7 +30,7 @@ from .mf_router import MFRouter
 
 @dataclass
 class RouteDecision:
-    tier: str                 # strong | local
+    tier: str                 # strong | local | small
     reason: str
     score: float | None = None
     threshold: float | None = None
