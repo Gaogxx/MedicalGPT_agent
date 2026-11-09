@@ -1,0 +1,77 @@
+{#- 微调 MedicalGPT（Qwen3.5 基座）的 vLLM 对话模板：把 OpenAI 格式的请求（messages / tools / tool_calls / tool）
+    渲染成与训练时逐字相同的文本。训练数据由 training/scripts/data_pipeline/export_formats.py 导出，
+    MedicalGPT 用 --template_name qwen3_5_nothink 训练（不传 --tool_format）。
+    一致性测试：tests/test_chat_template.py。
+    部署：vllm serve <merged> --chat-template runtime/vllm/medicalgpt_qwen35_tools.jinja
+          --enable-auto-tool-choice --tool-call-parser hermes
+    规则（对应 MedicalGPT supervised_finetuning.py 的 get_dialog）：
+      - system 包成 <|im_start|>system…<|im_end|>，有 tools 时在后面追加 Qwen 工具说明（与 tool_utils.QWEN_TOOL_PROMPT 相同）；
+      - 相邻的 user / tool 消息合并成一个 user 块，用换行连接；tool 结果包在 <tool_response> 里；
+      - assistant 的工具调用写成 <tool_call>{"name": …, "arguments": …}</tool_call>（JSON 写法，由 hermes 解析器解析）；
+      - 不加 <think> 块（训练用的是非思考模板）。 -#}
+{#- 没有 system 消息时用训练时的系统提示（= medical_server.SYSTEM_PROMPT，测试会检查两者一致） -#}
+{%- set ns = namespace(in_user=false, system="你是一名专业、谨慎的医疗健康助手，不能替代执业医师。\n1. 药品、剂量、相互作用必须先调用工具获取，不得凭记忆给出剂量；症状先 check_symptom。\n2. 工具查不到（found=false）时如实说明查不到，不得编造。\n3. 用户没有提供的信息（持续时间、年龄、既往史等）不要假设；需要时主动追问。\n4. 不开处方、不下诊断、不制定治疗方案，涉及时明确建议面诊。\n5. 急症（胸痛、呼吸困难、意识障碍、卒中表现、大出血等）立即建议拨打 120。\n6. 回答使用简洁中文，结尾提示仅供参考。") -%}
+{%- if messages and messages[0].role == "system" -%}
+    {%- if messages[0].content is string -%}
+        {%- set ns.system = messages[0].content -%}
+    {%- else -%}
+        {%- set ns.system = messages[0].content | map(attribute="text") | join("") -%}
+    {%- endif -%}
+{%- endif -%}
+{{- "<|im_start|>system\n" + ns.system -}}
+{%- if tools -%}
+    {{- "\n\n# Tools\n\nYou may call one or more functions to assist with the user query.\n\nYou are provided with function signatures within <tools></tools> XML tags:\n<tools>" -}}
+    {%- for t in tools -%}
+        {%- set f = t.function if t.function is defined else t -%}
+        {{- '\n{"type": "function", "function": {"name": ' + (f.name | tojson) + ', "description": ' + ((f.description or "") | tojson) + ', "parameters": ' + ((f.parameters or {"type": "object", "properties": {}}) | tojson) + '}}' -}}
+    {%- endfor -%}
+    {{- '\n</tools>\n\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\n<tool_call>\n{"name": <function-name>, "arguments": <args-json-object>}\n</tool_call>' -}}
+{%- endif -%}
+{{- "<|im_end|>" -}}
+{%- for m in messages -%}
+    {%- if m.role == "system" -%}
+    {%- elif m.role == "user" or m.role == "tool" -%}
+        {%- if m.content is string -%}
+            {%- set text = m.content -%}
+        {%- else -%}
+            {%- set text = m.content | map(attribute="text") | join("") -%}
+        {%- endif -%}
+        {%- if m.role == "tool" -%}
+            {%- set text = "<tool_response>\n" + text + "\n</tool_response>" -%}
+        {%- endif -%}
+        {%- if ns.in_user -%}
+            {{- "\n" + text -}}
+        {%- else -%}
+            {{- "\n<|im_start|>user\n" + text -}}
+            {%- set ns.in_user = true -%}
+        {%- endif -%}
+    {%- elif m.role == "assistant" -%}
+        {%- if ns.in_user -%}
+            {{- "<|im_end|>\n<|im_start|>assistant\n" -}}
+            {%- set ns.in_user = false -%}
+        {%- else -%}
+            {{- "\n<|im_start|>assistant\n" -}}
+        {%- endif -%}
+        {%- set acc = namespace(parts=[]) -%}
+        {%- if m.content and m.content is string -%}
+            {%- set acc.parts = acc.parts + [m.content] -%}
+        {%- endif -%}
+        {%- for tc in (m.tool_calls or []) -%}
+            {%- set fn = tc.function if tc.function is defined else tc -%}
+            {%- if fn.arguments is string -%}
+                {%- set args = fn.arguments -%}
+            {%- else -%}
+                {%- set args = fn.arguments | tojson -%}
+            {%- endif -%}
+            {%- set acc.parts = acc.parts + ['<tool_call>\n{"name": "' + fn.name + '", "arguments": ' + args + '}\n</tool_call>'] -%}
+        {%- endfor -%}
+        {{- acc.parts | join("\n") + "<|im_end|>" -}}
+    {%- endif -%}
+{%- endfor -%}
+{%- if add_generation_prompt -%}
+    {%- if ns.in_user -%}
+        {{- "<|im_end|>\n<|im_start|>assistant\n" -}}
+    {%- else -%}
+        {{- "\n<|im_start|>assistant\n" -}}
+    {%- endif -%}
+{%- endif -%}

@@ -14,7 +14,7 @@ tiers:
       api_key_env: DEEPSEEK_API_KEY
       model: deepseek-chat
       timeout: 60
-  local:                        # 本地中模型 / 兜底：微调后的 MedicalGPT（vLLM）
+  local:                        # 本地中模型 / 兜底：微调后的 MedicalGPT（vLLM）。Qwen3.5-9B 重训后端口与模型名不变（docs/train_qwen35_plan.md）
     - name: medicalgpt-7b
       base_url: http://127.0.0.1:8000/v1
       api_key_env: VLLM_API_KEY
