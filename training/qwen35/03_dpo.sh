@@ -23,3 +23,6 @@ CUDA_VISIBLE_DEVICES=0 python training/dpo_training.py \
     --remove_unused_columns False --report_to tensorboard \
     --output_dir $WORK/outputs/dpo-qwen3.5-9b-medical 2>&1 | tee $WORK/outputs/dpo-qwen3.5-9b-medical.log
 # 盯住 eval 的 rewards/accuracies 与 margins：v0 曾出现 accuracy 1.0、margin≈10（过拟合），出现就提前停在更早的 checkpoint
+# 合并 DPO adapter → OPD 的学生模型（跳过 OPD 时它就是最终模型，见 05_merge.sh）
+python tools/merge_peft_adapter.py --base_model $WORK/models/qwen3.5-9b-medical-sft \
+    --lora_model $WORK/outputs/dpo-qwen3.5-9b-medical --output_dir $WORK/models/qwen3.5-9b-medical-dpo

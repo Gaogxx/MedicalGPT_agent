@@ -1,5 +1,5 @@
 #!/bin/bash
-# 第 6 步：评测（与 2026-09 的 MedicalGPT-7B、未微调 Qwen3.5-2B 用同一套指标对比）
+# 第 7 步：评测（与 2026-09 的 MedicalGPT-7B 用同一套指标对比；做了 OPD 时，DPO 版和 OPD 版各跑一次）
 set -e
 REPO=${REPO:-/root/autodl-tmp/MedicalGPT_agent}
 cd $REPO

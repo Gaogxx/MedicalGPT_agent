@@ -22,7 +22,7 @@ Medical-GPT 是一个面向**医疗健康场景**的大模型 Agent 系统。它
 
 ### 核心架构理念
 
-- **训练侧（MedicalGPT）**：用 ShareGPT 格式（含 `function_call` / `observation` 角色）训练模型的工具调用能力，用 DPO 对齐"主动调工具、安全准确回答"的偏好。
+- **训练侧（MedicalGPT）**：训练数据统一为 **OpenAI 格式**（messages + tools + tool_calls，与线上请求同构），由 `export_formats.py` 生成 MedicalGPT 的输入；SFT 学工具调用，DPO 对齐"主动调工具、安全准确回答"的偏好，OPD 用 Qwen3.5-27B 教师在线蒸馏提升问答质量。
 - **运行时侧（DeepSeek Harness + medagent）**：DSH 负责 agent 循环、会话与界面；medagent 路由网关在小模型、微调 MedicalGPT、云端医疗大模型三档之间分流，并做熔断、重试、跨层兜底、回答校验和输出安全关；医疗工具、知识资源与“复杂问诊”编排器以 **MCP Server** 形式接入；RAG 连接本地 329 万篇全文索引与 PubMed / Europe PMC 等在线文献。
 - **安全合规**：高风险操作（诊断/处方）策略拦截，紧急症状自动建议就医/拨打 120，所有轨迹事件溯源审计。
 
@@ -69,7 +69,8 @@ flowchart LR
 
 ### 亮点一：工具调用能力的训练闭环
 
-采用 MedicalGPT ShareGPT 格式，通过 `function_call` / `observation` 两种角色显式训练"模型何时调用工具、如何构造参数、如何基于观察结果作答"，而非仅靠 prompt 工程。相比普通 SFT，`--tool_format default` + 更大的 `--lora_rank 16` 显著提升工具选择与参数提取准确率。
+训练数据以 OpenAI 格式为准（`training/data/openai_v3/`）：用户消息、assistant 的 `tool_calls`、`tool` 角色的工具结果、可用工具列表 `tools`，与线上 DSH → 网关 → vLLM 的请求结构完全相同，显式训练"模型何时调用工具、如何构造参数、如何基于工具结果作答"。
+MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 格式渲染成它的输入，渲染写法与上线用的 vLLM 对话模板逐字一致（有测试保证），训练学到的工具调用格式上线后能被解析器正确识别。
 
 ### 亮点二：MCP 工具层 + 三档路由
 
@@ -214,7 +215,7 @@ pip install -e ".[dev,rag,redis]"
 python -m pytest -q                                  # 单元测试（离线）
 medagent ask --mock "我胸口剧痛冒冷汗"                # 不连模型也能跑通完整编排（离线模式）
 export BAICHUAN_API_KEY=... DEEPSEEK_API_KEY=... VLLM_API_KEY=dummy MEDAGENT_GATEWAY_KEY=dummy
-# 1) 微调 MedicalGPT：vLLM 起在 :8000（Qwen3.5 版见 training/qwen35/05_serve.sh）
+# 1) 微调 MedicalGPT：vLLM 起在 :8000（Qwen3.5 版见 training/qwen35/06_serve.sh）
 # 2) 路由网关（DSH 的模型端点）
 medagent-gateway --port 9000              # 联调可加 --mock，不需要 GPU / API
 # 3) DSH：settings.yaml 放到 ~/.dsh/，MCP Server 由 cordis.yml 里的 dsh-mcp-client 自动以 stdio 拉起
@@ -259,8 +260,9 @@ python -m medagent.rag.scalable download --with-training # 训练数据补充用
 cd training/scripts/data_pipeline && python supplement.py && python augment.py --sft ../../data/sft/toolcall_*.jsonl ../../data/supplement/sft_toolcall_ext.jsonl --raw-qa ../../data/supplement/sft_real_qa.jsonl --out-dir ../../data/augmented_v3 --n-clarify 0 --n-raft 1200 && python mix_v3.py && cd -
 ```
 
-重训（Qwen3.5-9B 基座 + MedicalGPT 最新版）按 [docs/train_qwen35_plan.md](docs/train_qwen35_plan.md) 依次执行 `training/qwen35/00_env.sh` → `06_eval.sh`：
-环境 → 数据导出与格式一致性检查 → QLoRA SFT → DPO → 合并 → vLLM 部署 → 端到端评测。
+重训（Qwen3.5-9B 基座 + MedicalGPT 最新版）按 [docs/train_qwen35_plan.md](docs/train_qwen35_plan.md) 依次执行 `training/qwen35/00_env.sh` → `07_eval.sh`：
+环境 → 数据（OpenAI 格式 → MedicalGPT 输入）与格式一致性检查 → QLoRA SFT → DPO → OPD 蒸馏（教师 Qwen3.5-27B）→ 合并 → vLLM 部署 → 端到端评测。
+方案文档里记录了准备过程中查出的 11 个问题及处理方式，并留有训练记录表。
 
 ---
 
@@ -290,10 +292,11 @@ MedicalGPT_agent/
 ├── tests/                              # 单元测试（pytest，离线）
 ├── training/
 │   ├── configs/data_mix_v2.yaml        # 数据配比
-│   ├── qwen35/                         # Qwen3.5-9B 重训流水线 00_env → 06_eval
-│   ├── scripts/data_pipeline/          # audit_data / augment（遮挡造数）/ mix_v3 / export_formats（ShareGPT → OpenAI / 预渲染）
+│   ├── qwen35/                         # Qwen3.5-9B 重训流水线 00_env → 07_eval（SFT → DPO → OPD）
+│   ├── scripts/data_pipeline/          # audit_data / augment（遮挡造数）/ mix_v3 / export_formats（→ OpenAI 格式 → MedicalGPT 输入）
 │   ├── scripts/sft_train_v2.sh · dpo_train_v2.sh · patch_medicalgpt_dpo.py
-│   ├── data/sft_v3 · reward_v3          # v3 数据（20,663 / 2,971），data_v3_manifest.json
+│   ├── data/openai_v3/{sft,dpo}        # v3 训练数据，OpenAI 格式（标准格式）
+│   ├── data/sft_v3 · reward_v3          # v3 数据的 ShareGPT 中间版本（mix_v3.py 产出），data_v3_manifest.json
 │   ├── data/sft_v2 · reward_v2 · augmented   # v2 数据
 │   ├── data/sft · reward · opd · pretrain    # v0 原数据（保留以便对比）
 │   ├── logs/ · outputs/                # 历史训练日志与 LoRA adapter
