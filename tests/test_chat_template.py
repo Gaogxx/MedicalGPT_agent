@@ -110,3 +110,24 @@ def test_tool_call_roundtrip_with_dict_or_string_arguments():
     assert as_str == as_dict
     assert '<tool_call>\n{"name": "search_drug", "arguments": {"name": "布洛芬"}}\n</tool_call><|im_end|>' in as_str
     assert ef.tools_prompt(ef.normalize_tools([t["function"] for t in tools])) in as_str
+
+
+# ---------------------------------------------------------------- OpenAI 格式为准：训练实际走 OpenAI → MedicalGPT 输入
+def test_openai_canonical_data_renders_like_training_text():
+    for kind in ("sft", "dpo"):
+        for r in rows(ROOT / "training" / "data" / "openai_v3" / kind / "val.jsonl"):
+            mg = ef.openai_row_to_medicalgpt(r)
+            msgs = r["messages"] + ([r["chosen"]] if kind == "dpo" else [])
+            conv = mg["conversations"] + ([{"from": "gpt", "value": mg["chosen"]}] if kind == "dpo" else [])
+            assert render(msgs, r.get("tools")) == medicalgpt_text(conv)
+
+
+def test_openai_path_equals_sharegpt_path():
+    for kind, fn in (("sft", ef.export_sft), ("dpo", ef.export_dpo)):
+        src = "sft_v3" if kind == "sft" else "reward_v3"
+        for r in rows(ROOT / "training" / "data" / src / "val.jsonl"):
+            oa, mg = fn(r)
+            again = ef.openai_row_to_medicalgpt(oa)
+            assert again["conversations"] == mg["conversations"]
+            if kind == "dpo":
+                assert (again["chosen"], again["rejected"]) == (mg["chosen"], mg["rejected"])

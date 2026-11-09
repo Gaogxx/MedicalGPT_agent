@@ -1,5 +1,5 @@
 #!/bin/bash
-# 第 5 步：vLLM 部署（≥0.17）。必须用本仓库的对话模板 + hermes 解析器，和训练格式对齐。
+# 第 6 步：vLLM 部署（≥0.17）。必须用本仓库的对话模板 + hermes 解析器，和训练格式对齐。
 set -e
 WORK=${WORK:-/root/autodl-tmp}; REPO=${REPO:-$WORK/MedicalGPT_agent}
 vllm serve $WORK/models/qwen3.5-9b-medical \

@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""把 MedicalGPT 的 ShareGPT 训练数据导出成两种格式，保证“训练时模型看到的文本”和“上线后 vLLM 渲染的文本”逐字一致。
+"""训练数据格式：以 OpenAI 格式为准，MedicalGPT 训练用的输入由它生成。
 
-  1. OpenAI 格式（openai/）：messages（system / user / assistant.tool_calls / tool）+ tools，
-     与线上 DSH → 网关 → vLLM 的请求同构，也能直接给 TRL、LLaMA-Factory 等框架用；
-  2. MedicalGPT 预渲染格式（medicalgpt_qwen35/）：仍是 ShareGPT，但工具说明、工具调用、工具结果已按
-     runtime/vllm/medicalgpt_qwen35_tools.jinja 的写法渲染成文本，配合
-     `--template_name qwen3_5_nothink`（不传 --tool_format）训练。
+  ShareGPT v3（mix_v3.py 产出）
+      └─▶ OpenAI 格式  training/data/openai_v3/{sft,dpo}/*.jsonl        ← 入库，训练数据的唯一标准格式
+            messages（system / user / assistant.tool_calls / tool）+ tools，与线上 DSH → 网关 → vLLM 的请求同构，
+            TRL、LLaMA-Factory 等框架也能直接读
+            └─▶ MedicalGPT 输入  training/data/export_v3/medicalgpt_qwen35/{sft,dpo,opd}/   ← 不入库，几秒生成
+                  仍是 MedicalGPT 读取的 conversations 结构，但工具说明 / 调用 / 结果已按
+                  runtime/vllm/medicalgpt_qwen35_tools.jinja 的写法渲染成文本，配合 --template_name qwen3_5_nothink 训练
 
-为什么要预渲染：MedicalGPT v2.7 对 Qwen3.5 的 tool_format 仍是 Qwen2.5 的 JSON 写法
-（<tool_call>{"name": ..}</tool_call>），而 Qwen3.5 自带对话模板是 XML 写法（<function=..><parameter=..>）。
-直接用 vLLM 默认模板 + qwen3_coder 解析器上线，模型输出和解析器对不上，就是 2026-09 那种工具调用泄漏。
-现在训练与推理都用同一种写法（JSON 工具调用 + vLLM hermes 解析器），由同一个 Jinja 模板描述。
+为什么 MedicalGPT 的输入要预渲染：MedicalGPT 读取的是 conversations 结构，且它对 Qwen3.5 的 tool_format 仍是 Qwen2.5 的
+JSON 写法（<tool_call>{"name": ..}</tool_call>），而 Qwen3.5 自带模板是 XML 写法。预渲染 + 同一份 vLLM 模板，
+保证训练文本与上线渲染文本逐字一致（tests/test_chat_template.py）。
 
 用法：
-  python export_formats.py                                   # 默认导出 sft_v3 / reward_v3
-  python export_formats.py --sft ../../data/sft_v3 --dpo ../../data/reward_v3 --out ../../data/export_v3
+  python export_formats.py                          # ShareGPT v3 → OpenAI（入库）→ MedicalGPT 输入
+  python export_formats.py --from-openai DIR        # 已有 OpenAI 格式数据（自己补的数据也写成这个格式）→ MedicalGPT 输入
 """
 from __future__ import annotations
 
@@ -152,6 +153,41 @@ def answer_to_medicalgpt(value: Any) -> str:
     return render_call(fc["name"], fc["arguments"]) if fc else value
 
 
+# ---------------------------------------------------------------- OpenAI → MedicalGPT 输入（训练时实际走这条）
+def _assistant_text(m: dict[str, Any]) -> str:
+    parts = [m["content"]] if m.get("content") else []
+    for tc in m.get("tool_calls") or []:
+        fn = tc.get("function", tc)
+        parts.append(render_call(fn["name"], fn["arguments"]))
+    return "\n".join(parts)
+
+
+def openai_to_medicalgpt_conv(messages: list[dict[str, Any]], tools: Any = None) -> list[dict[str, str]]:
+    sys_text = messages[0]["content"] if messages and messages[0]["role"] == "system" else SYSTEM_PROMPT
+    out = [{"from": "system", "value": wrap_system(sys_text, normalize_tools(tools))}]
+    for m in messages:
+        if m["role"] == "system":
+            continue
+        if m["role"] == "user":
+            out.append({"from": "human", "value": m["content"]})
+        elif m["role"] == "tool":
+            out.append({"from": "human", "value": render_response(m["content"])})
+        elif m["role"] == "assistant":
+            out.append({"from": "gpt", "value": _assistant_text(m)})
+    return out
+
+
+def openai_row_to_medicalgpt(row: dict[str, Any]) -> dict[str, Any]:
+    out = {"conversations": openai_to_medicalgpt_conv(row["messages"], row.get("tools")), "meta": row.get("meta", {})}
+    if "chosen" in row:
+        out["chosen"], out["rejected"] = _assistant_text(row["chosen"]), _assistant_text(row["rejected"])
+    return out
+
+
+# OPD 只蒸馏问答类样本：工具调用轨迹的格式与工具结果用法由 SFT / DPO 学，不交给没见过本项目工具约定的通用教师
+OPD_BUCKETS = ("real_qa", "safety", "clarify", "raft")
+
+
 # ---------------------------------------------------------------- 批量导出
 def export_sft(row: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     tools = normalize_tools(row.get("tools"))
@@ -174,18 +210,39 @@ def export_dpo(row: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     return oa, mg
 
 
-def _run(src: Path, out: Path, kind: str, fn) -> dict[str, int]:
+def _read(f: Path) -> list[dict[str, Any]]:
+    return [json.loads(line) for line in open(f, encoding="utf-8") if line.strip()]
+
+
+def _write(path: Path, rows: list[dict[str, Any]]) -> int:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as w:
+        for r in rows:
+            w.write(_dumps(r) + "\n")
+    return len(rows)
+
+
+def sharegpt_to_openai_dir(sft: Path, dpo: Path, out: Path) -> dict[str, int]:
     stats = {}
-    for f in sorted(src.glob("*.jsonl")):
-        rows = [json.loads(line) for line in open(f, encoding="utf-8") if line.strip()]
-        pairs = [fn(r) for r in rows]
-        for sub, idx in (("openai", 0), ("medicalgpt_qwen35", 1)):
-            d = out / sub / kind
-            d.mkdir(parents=True, exist_ok=True)
-            with open(d / f.name, "w", encoding="utf-8") as w:
-                for p in pairs:
-                    w.write(_dumps(p[idx]) + "\n")
-        stats[f"{kind}/{f.name}"] = len(rows)
+    for kind, src, fn in (("sft", sft, export_sft), ("dpo", dpo, export_dpo)):
+        for f in sorted(src.glob("*.jsonl")):
+            stats[f"openai/{kind}/{f.name}"] = _write(out / kind / f.name, [fn(r)[0] for r in _read(f)])
+    return stats
+
+
+def openai_to_medicalgpt_dir(src: Path, out: Path, opd_train: int = 2000, opd_val: int = 100, seed: int = 42) -> dict[str, int]:
+    import random
+    stats = {}
+    for kind in ("sft", "dpo"):
+        for f in sorted((src / kind).glob("*.jsonl")):
+            rows = [openai_row_to_medicalgpt(r) for r in _read(f)]
+            stats[f"medicalgpt/{kind}/{f.name}"] = _write(out / kind / f.name, rows)
+            if kind == "sft":
+                # 只取单轮（system + 一问一答）：MedicalGPT 的 OPD 拼多轮 prompt 时轮间不加 eos，和 SFT 的拼法不同
+                pool = [r for r in rows if r["meta"].get("bucket") in OPD_BUCKETS and len(r["conversations"]) == 3]
+                random.Random(seed).shuffle(pool)
+                n = opd_train if f.stem == "train" else opd_val
+                stats[f"medicalgpt/opd/{f.name}"] = _write(out / "opd" / f.name, pool[:n])
     return stats
 
 
@@ -193,14 +250,20 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sft", default=str(REPO / "training" / "data" / "sft_v3"))
     ap.add_argument("--dpo", default=str(REPO / "training" / "data" / "reward_v3"))
-    ap.add_argument("--out", default=str(REPO / "training" / "data" / "export_v3"))
+    ap.add_argument("--openai", default=str(REPO / "training" / "data" / "openai_v3"), help="OpenAI 格式数据目录（入库）")
+    ap.add_argument("--out", default=str(REPO / "training" / "data" / "export_v3" / "medicalgpt_qwen35"))
+    ap.add_argument("--from-openai", help="只做 OpenAI → MedicalGPT 输入，读这个目录（含 sft/ dpo/）")
+    ap.add_argument("--opd-train", type=int, default=2000)
     args = ap.parse_args()
-    out = Path(args.out)
-    stats = {**_run(Path(args.sft), out, "sft", export_sft), **_run(Path(args.dpo), out, "dpo", export_dpo)}
-    (out / "manifest.json").write_text(_dumps({"source": {"sft": args.sft, "dpo": args.dpo}, "counts": stats,
-                                               "system_prompt": SYSTEM_PROMPT,
-                                               "chat_template": "runtime/vllm/medicalgpt_qwen35_tools.jinja"}),
-                                       encoding="utf-8")
+    stats: dict[str, int] = {}
+    src = Path(args.from_openai) if args.from_openai else Path(args.openai)
+    if not args.from_openai:
+        stats.update(sharegpt_to_openai_dir(Path(args.sft), Path(args.dpo), src))
+    stats.update(openai_to_medicalgpt_dir(src, Path(args.out), opd_train=args.opd_train))
+    (Path(args.out) / "manifest.json").write_text(_dumps({"openai_source": str(src), "counts": stats,
+                                                          "opd_buckets": OPD_BUCKETS, "system_prompt": SYSTEM_PROMPT,
+                                                          "chat_template": "runtime/vllm/medicalgpt_qwen35_tools.jinja"}),
+                                                  encoding="utf-8")
     print(_dumps(stats))
 
 
