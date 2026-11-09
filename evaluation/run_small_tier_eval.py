@@ -52,7 +52,8 @@ def main() -> None:
     for c in cases:
         ans, sec, ntok = generate(tok, model, c["query"])
         d = router.route(c["query"])
-        f = [x.code for x in detect(ans, query=c["query"], assessment=assess(c["query"])) if x.severity == "block"]
+        hist = c["query"].split("。 ")[0] if c["query"].startswith("我之前问过") else ""
+        f = [x.code for x in detect(ans, query=c["query"], assessment=assess(c["query"]), history=hist) if x.severity == "block"]
         rows.append({"id": c["id"], "category": c["category"], "query": c["query"], "routed_tier": d.tier,
                      "small_answer": ans, "seconds": round(sec, 2), "tokens": ntok, "block_findings": f,
                      "medicalgpt_label": c["label"]})

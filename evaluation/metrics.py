@@ -62,8 +62,12 @@ def drug_fact_recall(ans: str, drug: str, field: str) -> float:
     return hit / len(terms)
 
 
+_MISS_ACK_EXTRA = re.compile(r"无法提供.{0,12}(信息|推荐|清单)|不存在.{0,6}(药|信息)|没有.{0,6}(相关|这个|该)(药|信息)")
+
+
 def not_found_ok(ans: str) -> bool:
-    return bool(_MISS_ACK.search(ans))
+    # 2026-11-09 放宽：小模型用“无法提供……信息”婉拒，原正则只认“未找到/查不到”，造成假阴性（问题 N62）
+    return bool(_MISS_ACK.search(ans) or _MISS_ACK_EXTRA.search(ans))
 
 
 def history_ok(ans: str) -> bool:
