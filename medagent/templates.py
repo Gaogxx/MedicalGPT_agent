@@ -40,7 +40,7 @@ def render_observation(tool: str, o: Any) -> str:
 
 def render_fallback(observations: list[tuple[str, Any]]) -> str:
     parts = [render_observation(t, o) for t, o in observations]
-    parts = [p for p in parts if p]
+    parts = list(dict.fromkeys(p for p in parts if p))   # 多个 worker 查到同一条目时只输出一次
     if not parts:
         return "抱歉，系统暂时无法给出可靠的回答。如有不适请及时就医；如为急症请立即拨打 120。"
     return "\n".join(parts)

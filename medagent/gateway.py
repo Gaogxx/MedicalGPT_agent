@@ -30,10 +30,12 @@ from .router.policy import SafetyFirstRouter, TieredRouter
 from .safety import EMERGENCY_BANNER, assess, guard_output
 from .types import AgentError, LLMResponse
 from .verify.attribution import attribute
-from .verify.detectors import detect
+from .verify.detectors import detect, multi_intent
 from .verify.jev import JevClient, JevVerifier
 
 GUARD_FIXABLE = {"emergency_missing", "prescription_in_high_risk"}
+CONSULT_TOOL = "complex_consult"      # medagent.mcp_servers.consult_server：Python 编排器包成的 MCP 工具
+CONSULT_MAX_CALLS = 2                 # 同一轮里最多发起 2 次（第 2 次 = 中断后用相同参数续跑）
 
 
 def _text(content: Any) -> str:
@@ -91,7 +93,8 @@ class RoutingGateway:
         self.pool, self.router = pool, router
         self.verifier = verifier or JevVerifier(JevClient())   # JEV_BASE_URL 未配置时只用规则
         self.audit_path = audit_path
-        self.stats = {"requests": 0, "strong": 0, "local": 0, "regenerated": 0, "leak_fixed": 0, "fallback": 0}
+        self.stats = {"requests": 0, "strong": 0, "local": 0, "regenerated": 0, "leak_fixed": 0, "fallback": 0,
+                      "consult": 0}
 
     @staticmethod
     def _turn(messages: list[dict[str, Any]]) -> tuple[str, str, bool, list[Any]]:
@@ -110,6 +113,44 @@ class RoutingGateway:
                     obs.append({"text": _text(m.get("content"))})
         return query, history, first, obs
 
+    @staticmethod
+    def _consult_state(messages: list[dict[str, Any]], names: "NameMap") -> tuple[int, dict[str, Any] | None, Any]:
+        """本轮（最后一条用户消息之后）复杂问诊工具的情况：(已发起次数, 最近一次的参数, 最近一次的结果)。
+        结果是解析后的 JSON；工具报错（DSH 传回的是错误文本）时是字符串。"""
+        idx = max((i for i, m in enumerate(messages) if m.get("role") == "user"), default=-1)
+        calls: dict[str, dict[str, Any]] = {}
+        order: list[str] = []
+        results: dict[str, Any] = {}
+        for m in messages[idx + 1:]:
+            if m.get("role") == "assistant":
+                for tc in m.get("tool_calls") or []:
+                    if names.raw(tc.get("function", {}).get("name", "")) == CONSULT_TOOL:
+                        try:
+                            args = json.loads(tc["function"].get("arguments") or "{}")
+                        except json.JSONDecodeError:
+                            args = {}
+                        calls[tc.get("id", "")] = args
+                        order.append(tc.get("id", ""))
+            elif m.get("role") == "tool" and m.get("tool_call_id") in calls:
+                text = _text(m.get("content"))
+                try:
+                    results[m["tool_call_id"]] = json.loads(text)
+                except json.JSONDecodeError:
+                    results[m["tool_call_id"]] = text
+        if not order:
+            return 0, None, None
+        last = order[-1]
+        return len(order), calls[last], results.get(last)
+
+    def _consult_call(self, body: dict[str, Any], names: "NameMap", args: dict[str, Any], meta: dict[str, Any],
+                      query: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        self.stats["consult"] += 1
+        call = {"id": f"call_{uuid.uuid4().hex[:8]}", "type": "function",
+                "function": {"name": names.full(CONSULT_TOOL), "arguments": json.dumps(args, ensure_ascii=False)}}
+        meta.update(served_tier="orchestrator", model="medagent-consult")
+        self._audit(query, meta)
+        return self._response(body, "", [call], meta), meta
+
     async def complete(self, body: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         self.stats["requests"] += 1
         messages, tools = body.get("messages", []), body.get("tools")
@@ -123,6 +164,25 @@ class RoutingGateway:
         meta: dict[str, Any] = {"tier": decision.tier, "reason": decision.reason, "fastpath": decision.fastpath and first,
                                 "repairs": []}
         tier = decision.tier
+        if CONSULT_TOOL in names.to_full and not (a.level == "emergency" or a.crisis):
+            n_calls, last_args, result = self._consult_state(messages, names)
+            if first and multi_intent(query):
+                # 多意图问题：不调模型，直接让 DSH 调“复杂问诊”工具——拆子问题、worker 隔离、逐步检查点都在工具里完成
+                meta.update(tier="orchestrator", reason="consult:multi_intent")
+                return self._consult_call(body, names, {"question": query, "history": history[-3000:]}, meta, query)
+            if isinstance(result, dict) and result.get("status") == "done" and result.get("answer"):
+                # 工具返回的回答已经在编排器里校验 / 修复过：原样交给用户（只过输出安全关），不再让模型转述一遍
+                meta.update(tier="orchestrator", reason="consult:answer", served_tier="orchestrator",
+                            model="medagent-consult", consult={k: result.get(k) for k in
+                                                               ("run_id", "sub_questions", "repairs", "resumed", "replayed")})
+                self._audit(query, meta)
+                return self._response(body, guard_output(result["answer"], a), [], meta), meta
+            if last_args is not None and not isinstance(result, dict) and n_calls < CONSULT_MAX_CALLS:
+                # 工具报错 / 超时（MCP Server 重启、模型超时……）：用相同参数再发一次 → 同一个 run_id → 从检查点续跑
+                meta.update(tier="orchestrator", reason="consult:resume_after_error")
+                meta["repairs"].append("consult_retry_resume")
+                return self._consult_call(body, names, last_args, meta, query)
+            # 其余情况（暂停、重试后仍失败）：交给模型用普通工具继续
         if tier == "small" and not first:
             # 本轮已经进入工具循环（之前升级到了 local 并调用了工具）：不能再回落到不带工具的小模型
             tier = "local"

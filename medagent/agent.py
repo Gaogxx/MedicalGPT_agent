@@ -47,6 +47,8 @@ class AgentConfig:
     max_workers: int = 3
     repair_attempts: int = 1
     llm_aggregate: bool = False
+    tool_subset: list[str] | None = None   # worker 可见的工具（None = 全部）；作为“复杂问诊”工具运行时只给只读工具
+    split_with_history: bool = False       # 有历史时是否仍拆子问题（复杂问诊工具开启：历史只进 w0 与患者槽位）
 
 
 class MedicalAgent:
@@ -145,7 +147,12 @@ class MedicalAgent:
 
     async def _node_plan(self, s: dict[str, Any]) -> dict[str, Any]:
         rq = self.rewriter.rewrite(s["query"])
-        subs = rq.sub_queries[: self.cfg.max_workers] if len(rq.sub_queries) >= 2 and not s["history"] else []
+        allow = not s["history"] or self.cfg.split_with_history
+        subs = rq.sub_queries if len(rq.sub_queries) >= 2 and allow and self.cfg.max_workers >= 2 else []
+        if len(subs) > self.cfg.max_workers:
+            # 子问题多于 worker 上限：多出来的并进最后一个 worker，不能悄悄丢掉（2026-11-09 之前会截断丢题）
+            k = self.cfg.max_workers - 1
+            subs = subs[:k] + ["；".join(subs[k:])]
         questions = subs or [s["query"]]
         s["workers"] = {f"w{i}": {"question": q, "status": "pending"} for i, q in enumerate(questions)}
         s["node"] = "work"
@@ -278,7 +285,7 @@ class MedicalAgent:
             msgs += s["history"]
         msgs.append({"role": "user", "content": question})
         msgs, _ = self.compressor.compress(msgs, prof)
-        tools = None if tier == "small" else self.toolbox.openai_tools()   # 小模型档只答概念题，不给工具
+        tools = None if tier == "small" else self.toolbox.openai_tools(self.cfg.tool_subset)   # 小模型档不给工具
         observations: list[list[Any]] = []
         answer, finish = "", None
         for rnd in range(self.cfg.max_tool_rounds):
@@ -300,6 +307,14 @@ class MedicalAgent:
                  "function": {"name": c.name, "arguments": json.dumps(c.arguments, ensure_ascii=False)}}
                 for i, c in enumerate(resp.tool_calls)]})
             for i, c in enumerate(resp.tool_calls):
+                if self.cfg.tool_subset is not None and c.name not in self.cfg.tool_subset:
+                    # 模型调了不在白名单里的工具（例如作为复杂问诊运行时去调预约）：不执行，按 MODEL 错误回给模型
+                    s["events"].append({"stage": "tool", "source": f"tool:{c.name}", "ok": False,
+                                        "error": AgentError(ErrorKind.MODEL, f"tool {c.name} not allowed here",
+                                                            source=f"tool:{c.name}").to_dict()})
+                    msgs.append({"role": "tool", "tool_call_id": c.id or f"{rnd}{i}",
+                                 "content": json.dumps({"error": f"此场景不可用工具 {c.name}"}, ensure_ascii=False)})
+                    continue
                 res = await self.toolbox.call(c.name, c.arguments, scope=f"{s['run_id']}:{wid}:{rnd}:{i}",
                                               events=s["events"])
                 if not res.ok and res.error and res.error.kind == ErrorKind.SILENT:

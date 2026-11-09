@@ -13,7 +13,9 @@ from typing import Callable
 _FILLER = re.compile(r"^(医生|大夫)?(你好|您好)[，,。！!]?|请问(一下)?|我想(问|咨询)(一下)?|麻烦(问一下)?|谢谢(医生|大夫)?[！!。]?$|"
                      r"[啊呀呢吧嘛哈]+(?=[，,。？?！!]|$)")
 _SPLIT = re.compile(r"[，,；;。]?(?:先|首先)(.+?)(?:再|然后|之后|接着)(.+)$")
-_AND_SPLIT = re.compile(r"(.+?)(?:和|以及|还有|另外)(.+?(?:药|饮食|指南|副作用|注意|怎么办).*)$")
+_AND_SPLIT = re.compile(r"(.+?)(?:和|以及|还有|另外)(.*?(?:药|饮食|指南|副作用|注意|怎么办).*)$")
+# “糖尿病有什么药和饮食建议”：后半句“饮食建议”没有主语，从前半句取主语补上 → “糖尿病饮食建议”
+_SUBJECT = re.compile(r"^(.+?)(?:有什么|有哪些|吃什么|用什么|怎么|如何|能不能|该|要)")
 
 
 @dataclass
@@ -52,13 +54,21 @@ class QueryRewriter:
         expanded = self.expand_terms(cleaned)
         subs: list[str] = []
         if self.decompose:
-            m = _SPLIT.search(cleaned) or _AND_SPLIT.search(cleaned)
+            m = _SPLIT.search(cleaned)
+            and_split = m is None
+            m = m or _AND_SPLIT.search(cleaned)
             if m:
                 head = cleaned[: m.start()].strip("，,。 ")
-                for part in m.groups():
+                if and_split and not head:
+                    sm = _SUBJECT.search(m.group(1))
+                    head = sm.group(1) if sm else ""
+                for i, part in enumerate(m.groups()):
                     part = part.strip("，,。 ")
-                    if part:
-                        subs.append(self.expand_terms(f"{head}{part}" if head and len(part) < 6 else part))
+                    if not part:
+                        continue
+                    short = len(part) < (8 if and_split else 6)
+                    use_head = head and short and not (and_split and i == 0)
+                    subs.append(self.expand_terms(f"{head}{part}" if use_head else part))
         if self.llm_rewriter is not None:
             try:
                 extra = self.llm_rewriter(cleaned).strip()
