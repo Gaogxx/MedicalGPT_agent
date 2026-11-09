@@ -1,5 +1,5 @@
 # 模型分层（ModelPool.from_yaml 读取）。价格单位：每百万 token，按各平台官网当前价格填写（此处留 0 表示未核实）。
-# 选型说明见 docs/routing.md。模型 ID 以各平台控制台为准——下面的 ID 来自公开资料，上线前请核对。
+# 选型说明见 docs/architecture_v2.md 第 4 节。模型 ID 以各平台控制台为准——下面的 ID 来自公开资料，上线前请核对。
 tiers:
   strong:                       # 云端医疗强模型：急症 / 高风险 / 路由判定本地会答砸的问题
     - name: baichuan-m3
