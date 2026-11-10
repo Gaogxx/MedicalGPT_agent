@@ -1,0 +1,16 @@
+{
+ "artifact": "mf_hash_dev80.json",
+ "threshold_before": 0.006071514417576834,
+ "threshold_after": 0.26347707499734124,
+ "val": {
+  "local": 0.5639,
+  "small": 0.0361,
+  "strong": 0.4
+ },
+ "test": {
+  "local": 0.5779,
+  "small": 0.0228,
+  "strong": 0.3992
+ },
+ "test_safety_forced_rate": 0.3308
+}

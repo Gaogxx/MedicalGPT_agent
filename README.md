@@ -75,7 +75,7 @@ MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 
 ### 亮点二：MCP 工具层 + 三档路由
 
 医疗工具从 DSH 的进程内 tool registry 迁到标准 MCP Server：工具定义只有一份真源，DSH 与 Python 编排器共用；有副作用的工具（预约）在客户端与服务端双层幂等。
-路由是三段级联：①安全规则（急症 / 危机 / 开药诊断 → strong）②RouteLLM 矩阵分解路由器在 local（微调 MedicalGPT-7B）与 strong（Baichuan-M3 / DeepSeek）之间二选一，按调用预算校准阈值 ③判为 local 的题里，通过规则门控的概念 / 科普题交给 small（Qwen3.5-2B）。MF 用 80 条人工标注的线上回答训练，5 折交叉验证 AUROC 0.78，阈值按 40% 强模型调用预算校准。
+路由是三段级联：①安全规则（急症 / 危机 / 开药诊断 → strong）②RouteLLM 矩阵分解路由器在 local（微调 MedicalGPT-7B）与 strong（Baichuan-M3 / DeepSeek）之间二选一，按调用预算校准阈值 ③判为 local 的题里，通过规则门控的概念 / 科普题交给 small（Qwen3.5-2B）。MF 的训练和评测用不同的数据：独立路由数据集（`evaluation/datasets/router_set.jsonl`，2,000 条真实问诊提问，与训练数据、所有评测集都不重叠）切成 train / val / test，train 训练、val 定阈值、test 报告；dev 80 只做人工标注的外部测试。阈值按“总体 40% 交给强模型”（含安全规则强制的部分）在真实提问上校准。
 
 ### 亮点三：医疗安全策略 + 合规审计
 
@@ -95,6 +95,15 @@ MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 
 ## 📊 医疗指标与迭代记录
 
 指标定义与复现命令见 [evaluation/README.md](evaluation/README.md)。下表每个数字都由 `evaluation/run_*_eval.py` 跑出，原始结果在 `evaluation/results/*.json`。
+
+评测集：
+
+| 集合 | 条数 | 内容 | 用途 |
+|---|---|---|---|
+| dev | 80 | 2026-09 线上 DSH 测试的真实回答，逐条人工标注 | 回答层指标、回放评测（同时用于调规则，成绩是样本内的） |
+| 独立盲测集 C | 80 | 看不到规则的人盲写的问题 | 分诊泛化 |
+| held-out A / B | 55 / 50 | 规则编写后写的问题 | 分诊 |
+| 路由数据集 | 2,000 | Huatuo26M-Lite / shibing624 / Huatuo 百科 validation 的真实提问，train 1,432 / val 305 / test 263 | 路由器训练、阈值校准、路由效果 |
 
 ### 定义的指标
 
@@ -129,6 +138,7 @@ MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 
 | 2026-11-09 | 复杂问诊 MCP 工具 | 编排器包成 `complex_consult`，网关对多意图问题确定性触发，出错用相同参数续跑 | Mock 机制评测：7 个崩溃点重试后全部续跑完成，worker 级崩溃只重做未完成的 worker；多意图子问题覆盖 66.7%→83.3%；同时修复了编排器在子问题多于 worker 上限时截断丢题、“X有什么药和饮食建议”拆不开两个问题 |
 | 2026-11-10 | 复杂问诊并入网关 | 编排器从单独的 MCP Server 移进路由网关进程，规则触发 + 模型通过内部工具按需调用；出错自动续跑一次，仍失败退回单 agent | 少一个 DSH 插件实例和一个 MCP Server 进程，少一轮工具往返；7 个崩溃点续跑、子问题覆盖 83.3% 不变 |
 | 2026-11-10 | 复杂问诊改由模型决定 | 去掉规则触发：先路由选档，再由被选中的模型决定是否调用；补“何时调用”训练数据（正例 400 / 反例 400）；补全子问题拆分规则（分句、“A和B分别…”） | 8 种多意图问法可拆分的从 3 种增至 8 种；真实问答检索 Recall@5 0.469 → 0.476；4 个评测集里被误拆的单一问题 1 条 |
+| 2026-11-10 | 路由器训练 / 评测分离 | 建 2,000 条独立路由数据集（去重去污染，train / val / test）；标注、训练、无标签校准三个脚本；运行时优先加载独立训练的路由器 | 查出冷启动阈值的问题：dev 80 上交给强模型 49%，真实提问上 82%；在真实提问 val 上重新校准后，test 上 39.9% |
 
 ## 🔧 关键问题解决方案
 
@@ -262,8 +272,8 @@ python -m medagent.rag.scalable download --with-training # 训练数据补充用
 cd training/scripts/data_pipeline && python supplement.py && python augment.py --sft ../../data/sft/toolcall_*.jsonl ../../data/supplement/sft_toolcall_ext.jsonl --raw-qa ../../data/supplement/sft_real_qa.jsonl --out-dir ../../data/augmented_v3 --n-clarify 0 --n-raft 1200 && python mix_v3.py && cd -
 ```
 
-重训（Qwen3.5-9B 基座 + MedicalGPT 最新版）按 [docs/train_qwen35_plan.md](docs/train_qwen35_plan.md) 依次执行 `training/qwen35/00_env.sh` → `07_eval.sh`：
-环境 → 数据（OpenAI 格式 → MedicalGPT 输入）与格式一致性检查 → QLoRA SFT → DPO → OPD 蒸馏（教师 Qwen3.5-27B）→ 合并 → vLLM 部署 → 端到端评测。
+重训（Qwen3.5-9B 基座 + MedicalGPT 最新版）按 [docs/train_qwen35_plan.md](docs/train_qwen35_plan.md) 依次执行 `training/qwen35/00_env.sh` → `08_router.sh`：
+环境 → 数据（OpenAI 格式 → MedicalGPT 输入）与格式一致性检查 → QLoRA SFT → DPO → OPD 蒸馏（教师 Qwen3.5-27B）→ 合并 → vLLM 部署 → 端到端评测 → 用新模型的实测结果重训路由器。
 方案文档里记录了准备过程中查出的 11 个问题及处理方式，并留有训练记录表。
 
 ---

@@ -114,6 +114,15 @@ Server 是能力提供方。
 - 一旦本轮进入工具循环，后续请求不会再回落到 small。
 实测见 `evaluation/results/small_tier_eval.json`（Qwen3.5-2B 在 80 条真实问题上的回答与 MedicalGPT 对比）。
 
+**MF 的训练与评测分离（2026-11-10）**：原来的 MF 用 dev 80 条训练，又在这 80 条上看路由效果，是样本内成绩；
+阈值也是在这 80 条上按 40% 定的。拿 2,000 条独立的真实问诊提问一测，交给强模型的比例是 82%（dev 80 上是 49%）。现在：
+- `evaluation/router/build_router_set.py`：2,000 条真实提问，与训练数据、所有评测集不重叠，集合内部近重复也去掉，切 train / val / test；
+- `label_router_set.py`：本地模型逐题作答，修复前被校验器拦下、或裁判（百川）对照参考答案判为 unsafe / poor，记为答砸；
+- `train_router.py`：train 训练、val 早停并定阈值、test 与 dev 80 报告；不到 30 条答砸样本拒绝训练；
+- `calibrate_router.py`：没有标签时，也能在真实提问 val 上按总体预算（含安全规则强制交给强模型的 33%）重定阈值——
+  冷启动 MF 已经这样重新校准过，test 上交给强模型 39.9%；
+- 运行时优先加载 `mf_router.npz`（独立数据训练），没有时才用冷启动版并告警；`/healthz` 显示当前用的是哪个。
+
 RouteLLM 的接法：`medagent/router/mf_router.py` 与官方 `routellm/routers/matrix_factorization/model.py` 同构
 （`σ(s(strong,q) − s(weak,q))`，`s = wᵀ(normalize(P_m) ⊙ W e_q)`），e_q 换成本地特征、用本项目自己的偏好标签训练——
 官方权重来自 Chatbot Arena 的 GPT-4/Mixtral 对、推理时还要调 OpenAI embedding，不适用于中文医疗。
