@@ -227,7 +227,7 @@ bash merge_lora.sh       # 合并 LoRA 导出完整权重
 pip install -e ".[dev,rag,redis]"
 python -m pytest -q                                  # 单元测试（离线）
 medagent ask --mock "我胸口剧痛冒冷汗"                # 不连模型也能跑通完整编排（离线模式）
-export BAICHUAN_API_KEY=... DEEPSEEK_API_KEY=... VLLM_API_KEY=dummy MEDAGENT_GATEWAY_KEY=dummy
+cp .env.example .env    # 在 .env 里填 BAICHUAN_API_KEY 等；.env 只在本机、不会上传，网关 / MCP Server 启动时自动读取
 # 1) 微调 MedicalGPT：vLLM 起在 :8000（Qwen3.5 版见 training/qwen35/06_serve.sh）
 # 2) 路由网关（DSH 的模型端点）
 medagent-gateway --port 9000              # 联调可加 --mock，不需要 GPU / API

@@ -39,3 +39,8 @@ evaluation/ISSUES.md
 evaluation/issues_log.json
 # 导出格式（export_formats.py 几秒内可从 sft_v3 / reward_v3 重新生成）
 training/data/export_v3/
+
+# 本机密钥与配置（API key 只放这里，绝不入库）；模板见 .env.example
+.env
+.env.*
+!.env.example

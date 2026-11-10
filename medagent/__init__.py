@@ -12,3 +12,9 @@
 """
 
 __version__ = "0.2.0"
+
+import os as _os
+
+if _os.environ.get("MEDAGENT_NO_DOTENV") != "1":
+    from .envfile import load_dotenv as _load_dotenv
+    _load_dotenv()          # 仓库根目录的 .env（本机配置，不入库），已 export 的变量优先
