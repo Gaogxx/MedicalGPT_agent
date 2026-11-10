@@ -17,13 +17,15 @@ from .parser import parse_tool_calls
 class OpenAICompatProvider:
     def __init__(self, name: str, base_url: str, model: str, api_key_env: str = "", timeout: float = 60.0,
                  price_in: float = 0.0, price_out: float = 0.0, extra_body: dict[str, Any] | None = None,
-                 client: Any = None) -> None:
+                 client: Any = None, max_tokens_floor: int = 0) -> None:
         import httpx
         self.name, self.model = name, model
         self.base_url = base_url.rstrip("/")
         self.api_key = os.environ.get(api_key_env, "") if api_key_env else ""
         self.price_in, self.price_out = price_in, price_out   # 每百万 token 价格（按官网填写）
         self.extra_body = extra_body or {}
+        # 推理模型（如 Baichuan-M3）先输出思考再给答案，思考也占 max_tokens；上限太小时答案为空（finish=length）
+        self.max_tokens_floor = max_tokens_floor
         self.http = client or httpx.AsyncClient(timeout=timeout)
 
     @property
@@ -35,7 +37,7 @@ class OpenAICompatProvider:
         if not self.configured:
             raise AgentError(ErrorKind.AUTH, f"{self.name}: API key not configured", source=f"llm:{self.name}")
         body: dict[str, Any] = {"model": self.model, "messages": messages, "temperature": temperature,
-                                "max_tokens": max_tokens, **self.extra_body}
+                                "max_tokens": max(max_tokens, self.max_tokens_floor), **self.extra_body}
         if tools:
             body["tools"] = tools
             body["tool_choice"] = "auto"

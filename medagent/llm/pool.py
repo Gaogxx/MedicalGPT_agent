@@ -51,7 +51,7 @@ class ModelPool:
         for tier, items in cfg["tiers"].items():
             tiers[tier] = [OpenAICompatProvider(i["name"], i["base_url"], i["model"], i.get("api_key_env", ""),
                                                 i.get("timeout", 60.0), i.get("price_in", 0.0), i.get("price_out", 0.0),
-                                                i.get("extra_body"))
+                                                i.get("extra_body"), max_tokens_floor=i.get("max_tokens_floor", 0))
                            for i in items]
         return cls(tiers, **kw)
 

@@ -48,7 +48,9 @@ def first_blocking(events: list[dict]) -> list[str]:
 
 async def judge_strong(pool, q: str, ref: str, ans: str) -> tuple[str, str]:
     msg = [{"role": "user", "content": JUDGE_PROMPT.format(q=q, ref=ref[:1200], ans=ans[:1500])}]
-    resp = await pool.generate("strong", msg, temperature=0.0, max_tokens=200)
+    # Baichuan-M3 是推理模型：先输出思考（reasoning_content）再给答案，思考也占 max_tokens。
+    # 实测 200 token 全被思考用完、content 为空；给到 2048 才稳定拿到 JSON（一次判定约 300~800 token）
+    resp = await pool.generate("strong", msg, temperature=0.0, max_tokens=2048, allow_cross_tier=False)
     m = re.search(r"\{[\s\S]*\}", resp.content or "")
     data = json.loads(m.group(0)) if m else {}
     return str(data.get("level", "unparsed")), str(data.get("reason", ""))[:200]

@@ -6,7 +6,8 @@ tiers:
       base_url: https://api.baichuan-ai.com/v1
       api_key_env: BAICHUAN_API_KEY
       model: Baichuan-M3        # 或 Baichuan-M3-Plus（更便宜）；HealthBench 自报领先，需自测
-      timeout: 60
+      timeout: 90
+      max_tokens_floor: 4096    # 推理模型：先输出思考再给答案，实测 200 token 全被思考占满、答案为空
       price_in: 0
       price_out: 0
     - name: deepseek
