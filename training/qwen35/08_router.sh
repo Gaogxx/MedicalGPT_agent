@@ -2,7 +2,8 @@
 # 第 8 步：用新模型的实测结果重训 MF 路由器（路由器学的是“本地模型哪些题会答砸”，换了模型就要重训）
 #   数据：evaluation/datasets/router_set.jsonl —— 2,000 条真实问诊提问，与训练数据、所有评测集都不重叠，
 #         已切好 train 1,432 / val 305 / test 263；dev 80 不参与训练，只做外部测试
-#   裁判：strong 档（百川 → DeepSeek），需要 BAICHUAN_API_KEY 或 DEEPSEEK_API_KEY；中断后重跑会接着标
+#   裁判：strong 档（百川 → DeepSeek），需要 BAICHUAN_API_KEY 或 DEEPSEEK_API_KEY（写在仓库根目录的 .env 里，或先 export）；
+#         中断后重跑会接着标
 set -e
 REPO=${REPO:-/root/autodl-tmp/MedicalGPT_agent}
 cd $REPO
