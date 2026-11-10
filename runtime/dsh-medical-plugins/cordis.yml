@@ -4,7 +4,8 @@
 # - 禁用 agent-instructions（阻止注入 deepseek-harness 的 AGENTS.md）
 # - 注入医疗 system prompt
 # - 医疗工具改为 MCP：通过 @deepseek-ai/dsh-mcp-client 连接 Python MCP Server（medagent.mcp_servers.medical_server），
-#   不再用 ctx.tools.register 往 tool registry 里塞 TS 实现。模型看到的工具名为 mcp__medical__<tool>
+#   不再用 ctx.tools.register 往 tool registry 里塞 TS 实现。模型看到的工具名为 mcp__medical__<tool>，共 8 个
+#   （7 个查询 / 预约工具 + complex_consult 复杂问诊）
 
 # 1. 默认模型 → medagent 路由网关（后面是三档模型：Qwen3.5-2B / 微调 MedicalGPT / 百川 → DeepSeek）
 - id: agent-default-model
@@ -72,8 +73,10 @@
         args: ['-m', 'medagent.mcp_servers.medical_server']
         cwd: /root/autodl-tmp/MedicalGPT_agent
         env:
-          MEDAGENT_STATE_DIR: /root/autodl-tmp/medagent_state   # 预约幂等状态落盘（SQLite）
-        toolCallTimeoutMs: 15000
+          MEDAGENT_STATE_DIR: /root/autodl-tmp/medagent_state   # 预约幂等状态、复杂问诊检查点落盘（SQLite）
+          # 第 8 个工具 complex_consult 在 Server 进程里运行编排器、直接调模型，需要与网关相同的模型 key：
+          # BAICHUAN_API_KEY / DEEPSEEK_API_KEY / VLLM_API_KEY（DSH 会继承启动它的 shell 环境变量）
+        toolCallTimeoutMs: 180000       # 复杂问诊要跑多个 worker，几十秒；其它 7 个工具内部各有 15 秒超时
         startupTimeoutMs: 20000
         failOnStartupError: true        # 医疗工具起不来就别以“无工具”状态对外服务
         reconnect:

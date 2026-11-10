@@ -1,9 +1,8 @@
-"""复杂问诊：在路由网关进程内运行 Python 编排器（Router–Worker + 逐步检查点），由模型侧按需调用。
+"""复杂问诊：Python 编排器（Router–Worker + 逐步检查点）的运行器，作为医疗工具 MCP Server 的第 8 个工具 complex_consult 对外提供。
 
-两种触发方式（都在网关里，DSH 看不到中间过程，只收到一条最终回答）：
-  1. 规则：本轮第一次回复、问题是明显的多意图（“先…再…”、“药和饮食”），网关直接运行编排器；
-  2. 模型：网关在发给 local / strong 模型的工具清单里加一个内部工具 complex_consult，模型判断问题复杂时调用它，
-     网关拦下这个调用、运行编排器，不会转给 DSH。
+调用链：DSH 把 8 个医疗工具交给路由网关 → 网关选档后发给模型 → 模型判断问题需要拆开查时调用 complex_consult →
+DSH 经 mcp-medical 实例调用 MCP Server → Server 里的 ConsultRunner 运行编排器 → 结果作为工具结果回到 DSH →
+DSH 带结果再请求网关，网关看到复杂问诊已完成，直接把回答交给用户。
 
 编排器内部：拆子问题，每个 worker 只拿子问题 + 患者槽位 + 只读工具（经 MCP 调医疗工具 Server），用与网关相同的模型池，
 每走完一步存检查点。run_id = hash(问题 + 历史)：网关进程崩溃后 DSH 重发同一请求，会命中同一个检查点续跑，
@@ -20,14 +19,10 @@ from typing import Any
 READ_ONLY_TOOLS = ["check_symptom", "search_drug", "check_interaction", "search_guideline", "search_knowledge"]
 
 TOOL_NAME = "complex_consult"
-TOOL_SPEC = {"type": "function", "function": {
-    "name": TOOL_NAME,
-    "description": ("复杂问诊：一次咨询里有多个子问题、需要分别查证时调用（如“先说用药再说饮食”、“这几种药分别要注意什么”）。"
-                    "会拆分子问题、分别查询知识工具并校验，返回完整回答。单一问题直接用普通工具，不要调用本工具。"),
-    "parameters": {"type": "object", "properties": {
-        "question": {"type": "string", "description": "用户本轮原话"},
-        "history": {"type": "string", "description": "可选：之前对话里的关键信息（年龄、孕期、过敏、在用药等）"}},
-        "required": ["question"]}}}
+DESCRIPTION = ("复杂问诊：一次咨询里有多个子问题、需要分别查证时调用（如“先说用药再说饮食”、“这几种药分别要注意什么”）。"
+               "会拆分子问题、分别查询知识工具并校验，返回完整回答（answer）。单一问题直接用普通工具，不要调用本工具。"
+               "question 传用户本轮原话；history 可选，传之前对话里的关键信息（年龄、孕期、过敏、在用药等）。"
+               "失败或超时用相同参数重试会从断点继续。")
 
 
 class ConsultError(Exception):
@@ -75,8 +70,9 @@ class ConsultRunner:
     @property
     def medical(self) -> Any:
         if self._medical is None:
+            # 编排器内部用的医疗工具 Server 不注册 complex_consult：worker 不能再调用复杂问诊（防递归）
             from .mcp_servers.medical_server import build_server
-            self._medical = build_server()
+            self._medical = build_server(consult=None)
         return self._medical
 
     async def _once(self, rid: str, question: str, history: str, resume: bool) -> dict[str, Any]:

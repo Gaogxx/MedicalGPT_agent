@@ -285,7 +285,10 @@ class MedicalAgent:
             msgs += s["history"]
         msgs.append({"role": "user", "content": question})
         msgs, _ = self.compressor.compress(msgs, prof)
-        tools = None if tier == "small" else self.toolbox.openai_tools(self.cfg.tool_subset)   # 小模型档不给工具
+        from .consult import TOOL_NAME
+        # worker 不能调用复杂问诊（它自己就在编排器里，调用会递归）
+        allowed = self.cfg.tool_subset or [t for t in self.toolbox.tools if t != TOOL_NAME]
+        tools = None if tier == "small" else self.toolbox.openai_tools(allowed)   # 小模型档不给工具
         observations: list[list[Any]] = []
         answer, finish = "", None
         for rnd in range(self.cfg.max_tool_rounds):
@@ -307,7 +310,7 @@ class MedicalAgent:
                  "function": {"name": c.name, "arguments": json.dumps(c.arguments, ensure_ascii=False)}}
                 for i, c in enumerate(resp.tool_calls)]})
             for i, c in enumerate(resp.tool_calls):
-                if self.cfg.tool_subset is not None and c.name not in self.cfg.tool_subset:
+                if c.name not in allowed:
                     # 模型调了不在白名单里的工具（例如作为复杂问诊运行时去调预约）：不执行，按 MODEL 错误回给模型
                     s["events"].append({"stage": "tool", "source": f"tool:{c.name}", "ok": False,
                                         "error": AgentError(ErrorKind.MODEL, f"tool {c.name} not allowed here",
