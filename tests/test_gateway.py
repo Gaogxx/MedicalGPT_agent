@@ -124,3 +124,17 @@ async def test_small_tier_routing_and_escalation():
     assert any(x.startswith("escalate_local") for x in meta["repairs"])
     r = await call(g, {"messages": [{"role": "user", "content": "布洛芬的适应症是什么"}], "tools": DSH_TOOLS})
     assert r.json()["medagent"]["tier"] == "local"                               # 涉及药品不给小模型
+
+
+async def test_reasoning_model_gets_max_tokens_floor():
+    seen = {}
+
+    async def chat(request):
+        seen["max_tokens"] = (await request.json())["max_tokens"]
+        return JSONResponse({"choices": [{"message": {"role": "assistant", "content": "好"}, "finish_reason": "stop"}]})
+
+    app = Starlette(routes=[Route("/v1/chat/completions", chat, methods=["POST"])])
+    client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://x")
+    p = OpenAICompatProvider("bc", "http://127.0.0.1:1/v1", "Baichuan-M3", client=client, max_tokens_floor=4096)
+    await p.chat([{"role": "user", "content": "hi"}], max_tokens=200)
+    assert seen["max_tokens"] == 4096
