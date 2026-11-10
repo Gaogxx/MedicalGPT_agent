@@ -36,16 +36,32 @@ def _pool(mock: bool):
 
 
 def _router(pool=None) -> SafetyFirstRouter:
-    """有 small 档模型时用三档 TieredRouter，否则两档 SafetyFirstRouter。"""
+    """有 small 档模型时用三档 TieredRouter，否则两档 SafetyFirstRouter。
+
+    MF 打分器的加载顺序：
+      1. mf_router.npz —— evaluation/router/train_router.py 用独立路由数据集（train / val / test）训练，dev 80 不参与；
+      2. mf_hash_dev80.npz —— 冷启动版：只用 dev 80 条训练，在 dev 80 上的路由表现是样本内成绩，不能当效果报告。"""
+    import logging
+
     from .router.mf_router import MFRouter
     from .router.policy import TieredRouter
-    art = ROOT / "medagent" / "router" / "artifacts"
-    mf, thr = None, 0.5
-    if (art / "mf_hash_dev80.npz").exists():
+    art = Path(os.environ.get("MEDAGENT_ROUTER_DIR", ROOT / "medagent" / "router" / "artifacts"))
+    mf, thr, source = None, 0.5, "none"
+    if (art / "mf_router.npz").exists():
+        mf = MFRouter.load(art / "mf_router.npz")
+        thr = json.loads((art / "mf_router.json").read_text())["threshold"]
+        source = "mf_router（独立路由数据集训练）"
+    elif (art / "mf_hash_dev80.npz").exists():
         mf = MFRouter.load(art / "mf_hash_dev80.npz")
-        thr = json.loads((art / "mf_hash_dev80.json").read_text())["threshold@40%"]
+        meta = json.loads((art / "mf_hash_dev80.json").read_text())
+        thr = meta.get("threshold_router_val", meta["threshold@40%"])   # 优先用在独立数据上重新校准的阈值
+        source = "mf_hash_dev80（冷启动，dev 80 训练）"
+        logging.getLogger("medagent").warning("路由器用的是冷启动版 MF（dev 80 训练）；重训本地模型后请运行 "
+                                              "evaluation/router/label_router_set.py + train_router.py")
     cls = TieredRouter if pool is not None and pool.tiers.get("small") else SafetyFirstRouter
-    return cls(mf=mf, threshold=thr)
+    r = cls(mf=mf, threshold=thr)
+    r.source = source
+    return r
 
 
 async def _ask(args: argparse.Namespace) -> None:

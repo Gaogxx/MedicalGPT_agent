@@ -111,6 +111,18 @@ def calibrate_threshold(scores: np.ndarray, strong_pct: float) -> float:
     return float(np.quantile(scores, 1 - strong_pct))
 
 
+def calibrate_with_forced(scores: np.ndarray, forced: np.ndarray, budget: float) -> float:
+    """整体预算版：安全规则已经强制交给强模型的（急症 / 危机 / 开药诊断）先占预算，
+    MF 只在剩下的问题里挑，使总体约 budget 的问题去强模型。强制部分已超预算时，MF 不再送任何问题。"""
+    forced = np.asarray(forced, bool)
+    rest = scores[~forced]
+    left = budget - forced.mean()
+    if left <= 0 or not len(rest):
+        return float("inf")
+    share = min(left / (1 - forced.mean()), 1.0)
+    return float(np.quantile(rest, 1 - share))
+
+
 def apgr(weak_quality: np.ndarray, strong_quality: np.ndarray, routed_strong: np.ndarray) -> float:
     """Average Performance Gap Recovered（RouteLLM 论文指标）：(路由质量 − 弱模型) / (强模型 − 弱模型)。"""
     routed = np.where(routed_strong, strong_quality, weak_quality).mean()

@@ -46,11 +46,13 @@ DISCLAIMERS = ["以上信息仅供参考，具体请遵医嘱。", "以上仅为
                "用药前请仔细阅读说明书，或咨询医生、药师。", "每个人情况不同，请以医生的判断为准。"]
 
 
-def eval_texts() -> set[str]:
+def eval_texts(exclude: tuple[str, ...] = ()) -> set[str]:
     """所有评测集的查询（dev / A / B / C / RAG qrels / 旧 eval_* / Huatuo 百科测试集），用于去污染。"""
     texts: set[str] = set()
     ds = REPO / "evaluation" / "datasets"
     for p in ds.glob("*.jsonl"):
+        if p.name in exclude:
+            continue
         for r in read_jsonl(p):
             if "query" in r:
                 texts.add(r["query"])

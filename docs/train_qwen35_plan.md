@@ -1,6 +1,6 @@
 # 本地模型换 Qwen3.5 基座：重训方案（MedicalGPT 最新版）
 
-脚本在 [`training/qwen35/`](../training/qwen35/)，按编号 00 → 07 顺序执行。
+脚本在 [`training/qwen35/`](../training/qwen35/)，按编号 00 → 08 顺序执行。
 
 ## 1. 选型
 
@@ -44,6 +44,7 @@
 | 5 | `05_merge.sh` | 合并 OPD adapter 得到最终权重（`SKIP_OPD=1` 时直接用 DPO 版） | 输出目录里保留 Qwen3.5 原始 config |
 | 6 | `06_serve.sh` | vLLM 部署在 :8000，模型名 `medical-agent` | 冒烟请求返回标准 `tool_calls`，正文里没有 `<tool_call>` |
 | 7 | `07_eval.sh` | `evaluation/run_live_eval.py`：80 条 dev 问题走完整编排，与 2026-09 MedicalGPT-7B 同指标对比 | DPO 版与 OPD 版各跑一次；OPD 版的药品事实覆盖、格式干净率不能比 DPO 版低 |
+| 8 | `08_router.sh` | 用新模型重训 MF 路由器：在 2,000 条独立路由数据集上逐题作答 → 校验器 + 百川裁判打“答砸”标签 → train 训练、val 定阈值、test 与 dev 80 报告 | test 的 AUROC；阈值下总体交给强模型约 40%；网关 `/healthz` 显示加载的是 `mf_router` |
 
 ### OPD 的设计
 

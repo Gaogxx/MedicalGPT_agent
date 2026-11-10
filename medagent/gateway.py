@@ -313,7 +313,7 @@ def create_app(gateway: RoutingGateway):
         return JSONResponse(st or {"error": "not found"}, status_code=200 if st else 404)
 
     async def health(_: Request) -> JSONResponse:
-        return JSONResponse({"stats": gateway.stats,
+        return JSONResponse({"stats": gateway.stats, "router": getattr(gateway.router, "source", "unknown"),
                              "breakers": {n: b.state() for n, b in gateway.pool.breakers.items()}})
 
     return Starlette(routes=[Route("/v1/models", models), Route("/v1/chat/completions", chat, methods=["POST"]),

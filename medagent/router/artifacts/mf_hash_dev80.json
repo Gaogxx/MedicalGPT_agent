@@ -3,5 +3,12 @@
   "threshold@40%": 0.006071514417576834,
   "trained_on": "agent_eval_dev (80)",
   "label": "local MedicalGPT answer fails (human label)",
-  "warning": "80 条样本训练，仅作冷启动；上线前需用两档模型实测标签重训"
+  "warning": "80 条样本训练，仅作冷启动；上线前需用两档模型实测标签重训",
+  "threshold_router_val": 0.26347707499734124,
+  "calibration": {
+    "data": "router_set val（无标签真实提问）",
+    "n": 305,
+    "budget": 0.4,
+    "safety_forced_rate": 0.3344
+  }
 }
