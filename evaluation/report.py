@@ -261,7 +261,7 @@ def main() -> None:
     ce = j("consult_eval.json")
     if ce:
         t, c = ce["trigger"], ce["completeness"]
-        out += ["## 12. 复杂问诊 MCP 工具（编排器包成工具，DSH 模式也有 worker 隔离与逐步检查点）", "",
+        out += ["## 12. 复杂问诊（网关内运行编排器：worker 隔离与逐步检查点）", "",
                 f"> {ce['note']}。", "",
                 "| 指标 | 结果 |", "|---|---|",
                 f"| dev 80 题中网关触发复杂问诊 | {t['triggered']} 题（标注了多个必答要点的 {t['multi_part_must_cover']} 题全部触发） |",

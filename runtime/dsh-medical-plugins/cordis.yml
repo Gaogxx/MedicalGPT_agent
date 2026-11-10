@@ -81,27 +81,6 @@
           initialDelayMs: 500
           maxDelayMs: 30000
           maxAttempts: 10
-    # 复杂问诊：Python 编排器包成的 MCP 工具（拆子问题 + worker 隔离 + 逐步检查点）。单独一个 Server，
-    # 因为一次问诊要跑多个 worker、耗时几十秒，需要比普通工具更长的超时；网关对多意图问题会直接触发它。
-    - id: mcp-medical-consult
-      name: '@deepseek-ai/dsh-mcp-client'
-      config:
-        serverName: medical_consult
-        transport: stdio
-        command: /root/autodl-tmp/MedicalGPT_agent/.venv/bin/python
-        args: ['-m', 'medagent.mcp_servers.consult_server']
-        cwd: /root/autodl-tmp/MedicalGPT_agent
-        env:
-          MEDAGENT_STATE_DIR: /root/autodl-tmp/medagent_state   # 问诊检查点 consult_runs.sqlite
-          # 编排器直接调模型（不经网关），需要与网关相同的模型 key：BAICHUAN_API_KEY / DEEPSEEK_API_KEY / VLLM_API_KEY
-        toolCallTimeoutMs: 180000
-        startupTimeoutMs: 20000
-        failOnStartupError: false       # 起不来时 DSH 不会把这个工具发给网关（预期，未在真实 DSH 验证），网关不触发，退回单 agent
-        reconnect:
-          enabled: true
-          initialDelayMs: 500
-          maxDelayMs: 30000
-          maxAttempts: 10
     # 也可以把 MCP Server 单独部署成 HTTP 服务（python -m medagent.mcp_servers.medical_server --http --port 8765）：
     # - id: mcp-medical
     #   name: '@deepseek-ai/dsh-mcp-client'
