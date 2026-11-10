@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """“什么时候调用复杂问诊”的训练数据（OpenAI 格式）。
 
-网关不再按规则触发复杂问诊，而是把 complex_consult 放进 local / strong 模型的工具清单，由模型决定要不要调用。
+complex_consult 是医疗工具 MCP Server 的第 8 个工具，由模型决定要不要调用。
 微调 MedicalGPT 训练时没见过这个工具，所以补两类样本：
   - 正例：一次问了多件事（症状原因 + 用药、用药 + 饮食、两种药分别的注意事项……）→ 调用 complex_consult；
   - 反例：只问一件事 → 照常调用普通工具（来自 v3 的工具调用样本），工具清单里同样有 complex_consult，教模型“别乱用”。
-工具清单与线上一致：医疗工具 MCP Server 的 7 个工具在前，complex_consult 在最后（网关就是这样拼的）。
-正例只到“发出调用”为止：调用之后由网关执行编排器并直接返回答案，模型不需要转述。
+工具清单与线上一致：直接取 MCP Server 列出的 8 个工具（complex_consult 排在最后）。
+正例只到“发出调用”为止：调用之后由 DSH 执行、网关直接把编排器的回答交给用户，模型不需要转述。
 
   python consult_samples.py          # → training/data/openai_v3/sft/{train,val}_consult.jsonl
 """
@@ -22,7 +22,7 @@ REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from medagent.consult import TOOL_NAME, TOOL_SPEC  # noqa: E402
+from medagent.consult import TOOL_NAME  # noqa: E402
 from medagent.knowledge import load_kb  # noqa: E402
 from medagent.mcp_servers.medical_server import SYSTEM_PROMPT  # noqa: E402
 from medagent.rag.rewrite import QueryRewriter  # noqa: E402
@@ -67,7 +67,7 @@ def positives(templates: list[str], n: int, rng: random.Random, dc, tools: list[
             {"role": "assistant", "content": "", "tool_calls": [
                 {"id": "call_0", "type": "function",
                  "function": {"name": TOOL_NAME, "arguments": json.dumps({"question": q}, ensure_ascii=False)}}]}],
-            "tools": tools + [TOOL_SPEC], "meta": {"bucket": "consult_call", "split": split, "template": templates.index(t)}})
+            "tools": tools, "meta": {"bucket": "consult_call", "split": split, "template": templates.index(t)}})
     return out
 
 
@@ -77,7 +77,7 @@ def negatives(src: Path, n: int, rng: random.Random, tools: list[dict], split: s
     pool = [r for r in rows if r.get("meta", {}).get("bucket") in ("toolcall", "toolcall_ext")
             and not multi_intent(next(m["content"] for m in r["messages"] if m["role"] == "user"))]
     rng.shuffle(pool)
-    return [{**r, "tools": tools + [TOOL_SPEC], "meta": {**r.get("meta", {}), "bucket": "consult_negative", "split": split}}
+    return [{**r, "tools": tools, "meta": {**r.get("meta", {}), "bucket": "consult_negative", "split": split}}
             for r in pool[:n]]
 
 

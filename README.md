@@ -49,16 +49,16 @@ flowchart LR
     GW -- local --> L["微调 MedicalGPT-7B（vLLM）"]
     GW -- strong --> S["Baichuan-M3 → DeepSeek"]
     OPD --> L
-    DSH -- "dsh-mcp-client" --> MCP[("medagent MCP Server<br/>tools · resources · prompts")]
-    GW -- "复杂问诊（模型按需调用）" --> CS["Python 编排器<br/>拆子问题 · worker 隔离 · 逐步检查点"]
-    CS -- "只读工具" --> MCP
+    DSH -- "dsh-mcp-client" --> MCP[("medagent MCP Server<br/>8 个工具 · resources · prompts")]
+    MCP -- "第 8 个工具 complex_consult" --> CS["Python 编排器<br/>拆子问题 · worker 隔离 · 逐步检查点"]
+    CS -- "5 个只读工具" --> MCP
     MCP --> RAG["RAG：改写 → BM25/向量/KG/本地 329 万篇/在线文献 → RRF → 重排 → 压缩 → 缓存"]
     MCP --> KB[("精选 KB + Wikidata 实体层")]
 ```
 
 - **DSH 是主运行时，微调 MedicalGPT 是本地模型**：DSH 的模型请求先进 `medagent` 路由网关（`python -m medagent.gateway`），由网关在微调 MedicalGPT（vLLM）与云端医疗大模型之间路由，并做熔断、重试、泄漏修正、回答校验和安全关；DSH 继续负责 agent 循环、会话和界面。配置见 `runtime/dsh-medical-plugins/settings.yaml` 与 `cordis.yml`。
-- **工具层改为 MCP**：Python MCP Server 提供 tools（7 个）、resources（知识库条目、目录、来源、知识源状态 `kb://sources`、检索命中文档全文 `kb://doc/{id}`）、prompts（系统提示、追问模板、带证据作答）；DSH 通过官方 `@deepseek-ai/dsh-mcp-client` 接入。调度由宿主（DSH / 编排器）负责，Server 只提供能力。原 `index.ts` 的 `ctx.tools.register` 已移除。
-- **复杂问诊在模型侧按需调用**：Python 编排器（Router–Worker、逐步检查点）运行在路由网关进程内。多意图问题和其它问题一样先由路由器选档，再由被选中的模型决定：网关给 local / strong 模型的工具清单里多一个内部工具 `complex_consult`，模型调用时网关拦下并运行编排器，DSH 只收到最终回答。编排器拆子问题，每个 worker 只拿子问题 + 患者槽位 + 只读工具；中断后同一请求再来即从检查点续跑，已完成的 worker 不重跑。见 [架构 v2 §2](docs/architecture_v2.md)。
+- **工具层改为 MCP**：Python MCP Server 提供 tools（8 个：7 个查询 / 预约工具 + 复杂问诊 `complex_consult`）、resources（知识库条目、目录、来源、知识源状态 `kb://sources`、检索命中文档全文 `kb://doc/{id}`）、prompts（系统提示、追问模板、带证据作答）；DSH 通过官方 `@deepseek-ai/dsh-mcp-client` 接入。调度由宿主（DSH / 编排器）负责，Server 只提供能力。原 `index.ts` 的 `ctx.tools.register` 已移除。
+- **复杂问诊是第 8 个 MCP 工具**：Python 编排器（Router–Worker、逐步检查点）包成医疗工具 MCP Server 的 `complex_consult`，和另外 7 个工具一样由模型决定调用、由 DSH 执行。多意图问题先由路由器选档，再由被选中的模型决定是否调用；DSH 带回结果后，网关直接把编排器的回答交给用户，不再让模型转述。编排器拆子问题，每个 worker 只拿子问题 + 患者槽位 + 只读工具；中断后同一请求再来即从检查点续跑，已完成的 worker 不重跑。见 [架构 v2 §2](docs/architecture_v2.md)。
 - **知识库分三层**：①精选 KB（`build_kb.py` 合并原仓库两份不一致的手写表，21 症状 / 10 药 / 9 指南，含用法禁忌）②Wikidata 实体层（2,395 疾病 + 2,483 药物，ICD-10 / ATC 编码，CC0）③本地百万级全文索引（Huatuo + shibing624，3,287,539 篇，SQLite FTS5）+ 在线文献（PubMed 4,141 万 / Europe PMC 4,919 万条，实时检索）。所有条目标注来源与“未经审核”。
 - **路由三档**：small（Qwen3.5-2B，只答通过门控的概念/科普题）/ local（微调 MedicalGPT，RouteLLM 意义上的弱模型，默认档）/ strong（Baichuan-M3 → DeepSeek），安全规则优先，小模型答砸逐级升级，见 [架构 v2 §4](docs/architecture_v2.md)。
 - **Jev 校验与归因**：按自定的类型化契约接入（静默失败 Noul / 归因 Choice / 质量 Score），规则优先、Jev 补语义类失败，不可用时只用规则，见 [docs/jev_adapter.md](docs/jev_adapter.md)。
@@ -139,6 +139,7 @@ MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 
 | 2026-11-10 | 复杂问诊并入网关 | 编排器从单独的 MCP Server 移进路由网关进程，规则触发 + 模型通过内部工具按需调用；出错自动续跑一次，仍失败退回单 agent | 少一个 DSH 插件实例和一个 MCP Server 进程，少一轮工具往返；7 个崩溃点续跑、子问题覆盖 83.3% 不变 |
 | 2026-11-10 | 复杂问诊改由模型决定 | 去掉规则触发：先路由选档，再由被选中的模型决定是否调用；补“何时调用”训练数据（正例 400 / 反例 400）；补全子问题拆分规则（分句、“A和B分别…”） | 8 种多意图问法可拆分的从 3 种增至 8 种；真实问答检索 Recall@5 0.469 → 0.476；4 个评测集里被误拆的单一问题 1 条 |
 | 2026-11-10 | 路由器训练 / 评测分离 | 建 2,000 条独立路由数据集（去重去污染，train / val / test）；标注、训练、无标签校准三个脚本；运行时优先加载独立训练的路由器 | 查出冷启动阈值的问题：dev 80 上交给强模型 49%，真实提问上 82%；在真实提问 val 上重新校准后，test 上 39.9% |
+| 2026-11-10 | 复杂问诊成为第 8 个 MCP 工具 | `complex_consult` 注册进医疗工具 MCP Server，和其它 7 个工具一样由模型调用、DSH 执行；网关只负责把完成的结果直接交付；编排器的 worker 连不含它的 Server（防递归） | DSH 仍只有一个 `mcp-medical` 实例；会话记录里能看到这一步工具调用；训练数据的工具清单同步为 8 个 |
 
 ## 🔧 关键问题解决方案
 
@@ -179,7 +180,7 @@ DeepSeek Harness 处于 developer preview（存在 breaking change）。医疗�
 | 组件 | 技术 | 说明 |
 |------|------|------|
 | 工具协议 | MCP（Python SDK 2.x `MCPServer` / `Client`） | 替代原 tool registry；DSH 用 `dsh-mcp-client` 接入 |
-| 编排 | `medagent`（Router–Worker） | 检查点、暂停/恢复、并行 worker；在网关内由模型按需调用 |
+| 编排 | `medagent`（Router–Worker） | 检查点、暂停/恢复、并行 worker；作为 MCP 工具 `complex_consult` 由模型按需调用 |
 | 路由 | 安全规则 + RouteLLM 矩阵分解路由（numpy 复现）+ 小模型门控 | small / local / strong 三档 |
 | 模型 | small：Qwen3.5-2B / local：微调 MedicalGPT（vLLM）/ strong：Baichuan-M3 → DeepSeek | OpenAI 兼容接口，`configs/models.yaml` |
 | 推理 | vLLM + 自定义对话模板 + hermes 工具解析器 | 训练 / 推理格式逐字一致 |
@@ -234,7 +235,7 @@ medagent-gateway --port 9000              # 联调可加 --mock，不需要 GPU 
 dsh web --patch runtime/dsh-medical-plugins/cordis.yml
 ```
 
-复杂问诊在网关进程内运行，无需单独启动；`MEDAGENT_CONSULT=0` 可关闭，进度查看 `GET http://127.0.0.1:9000/consult/<run_id>`。
+复杂问诊是医疗工具 MCP Server 的第 8 个工具，随 `mcp-medical` 一起启动（工具超时 180 秒，Server 进程需要模型 key）；`MEDAGENT_CONSULT=0` 可关闭，进度读 MCP 资源 `consult://run/<run_id>`。
 
 不经 DSH 的命令行（离线评测 / CI 用）：`medagent ask "布洛芬和阿司匹林能一起吃吗"`；单独启动 MCP Server：`medagent-mcp --http --port 8765`。
 
@@ -290,7 +291,7 @@ MedicalGPT_agent/
 │   ├── agent.py                        # Router–Worker 编排、检查点、暂停/恢复（离线评测 / CI 运行时）
 │   ├── safety.py · triage.py           # 分诊（规则 ∪ 可训练分类器）与输出安全关
 │   ├── mcp_servers/medical_server.py   # 医疗工具 MCP Server（替代原 tool registry）
-│   ├── consult.py                      # 复杂问诊：网关内运行编排器（规则 / 模型按需触发、检查点续跑）
+│   ├── consult.py                      # 复杂问诊运行器：MCP 工具 complex_consult 背后的编排器（检查点续跑）
 │   ├── mcp_client.py                   # MCP 客户端工具箱（熔断/重试/幂等/归因）
 │   ├── router/                         # RouteLLM-MF 路由 + 安全优先策略（artifacts/ 为训练产物）
 │   ├── llm/                            # OpenAI 兼容 provider、模型池、工具调用解析、故障注入

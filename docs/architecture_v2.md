@@ -10,7 +10,7 @@ flowchart LR
     DSH -- "模型请求（OpenAI 兼容）" --> GW["medagent 路由网关 :9000<br/>分诊 → RouteLLM 路由 → 熔断/重试/跨层兜底<br/>泄漏工具调用修正 · 工具名映射<br/>最终回答校验 → 升级重答 · 输出安全关"]
     GW -- local --> L["微调 MedicalGPT-7B（vLLM :8000）<br/>SFT→DPO→OPD"]
     GW -- strong --> S["Baichuan-M3 → DeepSeek"]
-    DSH -- "dsh-mcp-client（stdio）" --> MCP[("medagent MCP Server<br/>tools 7 · resources 6 · prompts 3 · instructions")]
+    DSH -- "dsh-mcp-client（stdio）" --> MCP[("medagent MCP Server<br/>tools 8 · resources · prompts 3 · instructions")]
     MCP --> RAG["RAG 管线"]
     MCP --> KB[("统一知识库 kb.json")]
 ```
@@ -36,31 +36,31 @@ DeepSeek 开源的 [dsh-superagent-prototype](https://github.com/deepseek-ai/dsh
 | 中断后恢复 | 进程重启时中断的 Assignment 带恢复说明重跑，已汇报的保持 | `resilience/checkpoint.py` + `agent.py` 的 `_drive` / `resume` / `pause` | 每个节点（intake→route→plan→work→aggregate→verify→respond）结束写一次检查点；每个 worker 完成也单独落盘。暂停是协作式的：`pause()` 只把状态改成 pause_requested，运行中的流程在节点边界看到后保存并退出。`resume()` 从 `state["node"]` 继续，`status=done` 的 worker 不重跑；有副作用的步骤即使重放也被幂等键挡住。写检查点用版本号 CAS（乐观并发），另一个执行者已接管时本执行者必须停止，不会互相覆盖 |
 
 **DSH 模式下怎么也用上 worker 隔离与逐步检查点**：DSH 自己的 agent 循环是单 agent 的，所以拆子问题和逐步检查点要由掌握循环的一方实现。
-做法是让 Python 编排器在**路由网关进程内**运行（`medagent/consult.py` 的 `ConsultRunner`），由模型侧按需调用，DSH 只收到一条最终回答：
+做法是把 Python 编排器做成**医疗工具 MCP Server 的第 8 个工具** `complex_consult`（`medagent/consult.py` 的 `ConsultRunner`），
+和另外 7 个工具一样由模型决定调用、由 DSH 经 `mcp-medical` 实例执行：
 
 ```
 用户：“先说说布洛芬的副作用，再说说高血压饮食注意什么”
-DSH ──模型请求──▶ 网关
-   ├─ 路由器照常选档（安全规则 → MF → 小模型门控）；多意图问题不会分给小模型（门控排除多意图，小模型档也不带工具）
-   └─ 发给 local / strong 模型的工具清单 = DSH 的 7 个医疗工具 + 只有网关知道的 complex_consult；
-      模型判断问题需要拆开查时调用它，网关拦下，运行编排器（DSH 看不到这个工具）
-      编排器：intake → route → plan（拆 2 个子问题）→ work（w0、w1 并行，各自只拿子问题 + 患者槽位 + 只读工具，
-              经 MCP 调医疗工具 Server，用网关同一个模型池）→ aggregate → verify → respond，每步落检查点
-DSH ◀──最终回答── 网关（只过输出安全关，不再让模型转述）
+DSH ──模型请求（带 8 个工具）──▶ 网关：路由器选档（安全规则 → MF → 小模型门控）
+                                      多意图问题不会分给小模型（门控排除多意图，小模型档也不带工具）
+    网关 ──▶ 百川 / 微调 MedicalGPT：判断要拆开查 → tool_call: complex_consult{question}
+DSH ◀── 工具调用（网关原样交回，和其它工具一样）
+DSH ──执行──▶ mcp-medical 实例 ──▶ 医疗工具 MCP Server：complex_consult
+      编排器：intake → route → plan（拆 2 个子问题）→ work（w0、w1 并行，各自只拿子问题 + 患者槽位 + 5 个只读工具，
+              连的是不含 complex_consult 的 Server，防递归）→ aggregate → verify → respond，每步落检查点
+DSH ──带工具结果再请求──▶ 网关：结果 status=done → 直接把编排器的回答交给用户（只过输出安全关），不再让模型转述
 ```
 
-- **不按规则触发（2026-11-10）**：多意图问题和其它问题一样先选档，再由被选中的模型决定要不要调用复杂问诊。
-  dev 集 6 道多要点题全部被路由到 strong（百川）。微调 MedicalGPT 训练时没见过这个工具，所以补了训练数据
-  （`consult_samples.py`：多意图 → 调用 400 条 / 单一问题 → 调普通工具 400 条，工具清单里都有 complex_consult）；
-  模型没有调用时，回答漏掉子问题会被校验器的 incomplete_multi 拦下，升级到 strong 重答，strong 重答时同样可以调用复杂问诊。
-- **为什么放在模型侧**：2026-11-09 的第一版把编排器做成单独的 MCP Server，由网关返回一个工具调用让 DSH 去执行。这样多一个
-  DSH 插件实例、多一个 MCP Server 进程、多一轮“网关 → DSH → 工具 → DSH → 网关”的往返，还得给它单独设 180 秒超时。
-  2026-11-10 改为网关进程内调用：配置更少，模型也能按需决定要不要用。
-- **中断续跑**：run_id = hash(问题 + 历史)。同一进程里出错自动从检查点再续跑一次；网关进程崩溃后，DSH 重发同一请求会命中同一个检查点，
-  已完成的 worker 不重跑。人为暂停（`medagent pause <run_id> --consult`）的问诊不自动续跑。进度可看 `GET /consult/<run_id>`。
-- **失败退回**：编排器两次都没跑成，同一档模型不带 complex_consult 再答一次（普通单 agent 路径），不影响回答。
-- **长耗时**：流式请求期间网关每 5 秒发一个 SSE 注释保活，连接不会因空闲断开。急症 / 危机不走复杂问诊，先发急救提示。
-- **代价与取舍**：编排器内部的工具调用不经过 DSH，DSH 的会话记录里看不到这些中间步骤（网关审计日志里有）。
+- **由模型决定调用**：多意图问题和其它问题一样先选档，再由被选中的模型决定。dev 集 6 道多要点题全部被路由到 strong（百川）。
+  微调 MedicalGPT 训练时没见过这个工具，所以补了训练数据（`consult_samples.py`：多意图 → 调用 400 条 / 单一问题 → 调普通工具 400 条，
+  工具清单就是 MCP Server 列出的 8 个）；模型没有调用而漏答子问题时，校验器的 incomplete_multi 会拦下并升级 strong 重答。
+- **演变**：2026-11-09 第一版是单独的 MCP Server（多一个 DSH 插件实例），由网关按规则返回工具调用；2026-11-10 先并入网关进程，
+  随后按需求改为现在的做法——作为同一个 MCP Server 的第 8 个工具，DSH 里仍只有一个 `mcp-medical` 实例。
+- **中断续跑**：run_id = hash(问题 + 历史)。同一进程里出错自动从检查点再续跑一次；仍失败时返回错误，模型可以用相同参数重试（命中同一检查点）
+  或改用普通工具。人为暂停（`medagent pause <run_id> --consult`）的问诊不自动续跑。进度可读资源 `consult://run/{run_id}`。
+- **超时**：`mcp-medical` 实例的工具超时提到 180 秒（复杂问诊要跑几十秒）；其它 7 个工具内部各有 15 秒超时。
+- **模型 key**：编排器在 MCP Server 进程里直接调模型，Server 进程需要与网关相同的模型 key（DSH 继承启动它的 shell 环境变量）。
+- **好处**：DSH 的会话记录里能看到 complex_consult 这一步工具调用和它的结果；编排器内部各 worker 的工具调用记在检查点里。
 - 评测：`evaluation/run_consult_eval.py`，结果在 `evaluation/results/consult_eval.json`。
 
 ## 3. MCP：Server 提供什么、谁在调度
@@ -74,8 +74,8 @@ Server 是能力提供方。
 
 | MCP 能力 | 本项目提供的内容 | 谁来用 | DSH 支持情况 |
 |---|---|---|---|
-| tools（模型决定调用） | check_symptom、search_drug（含商品名、类别、症状反查）、check_interaction、search_guideline、search_knowledge（RAG）、book_appointment、cancel_appointment | 模型 | ✓ |
-| resources（宿主按 URI 读数据） | kb://catalog、kb://version、kb://provenance、kb://drug/{name}、kb://symptom/{name}、kb://guideline/{topic}、kb://sources（各知识源规模与状态）、kb://doc/{id}（检索命中文档全文） | 编排器：确定性兜底（模型全挂时读条目）；宿主：审核界面、查看问诊进度 | ✓（经 mcp-resources 共享工具） |
+| tools（模型决定调用） | check_symptom、search_drug（含商品名、类别、症状反查）、check_interaction、search_guideline、search_knowledge（RAG）、book_appointment、cancel_appointment、complex_consult（复杂问诊，运行编排器） | 模型 | ✓ |
+| resources（宿主按 URI 读数据） | kb://catalog、kb://version、kb://provenance、kb://drug/{name}、kb://symptom/{name}、kb://guideline/{topic}、kb://sources（各知识源规模与状态）、kb://doc/{id}（检索命中文档全文）、consult://run/{run_id}（复杂问诊检查点） | 编排器：确定性兜底（模型全挂时读条目）；宿主：审核界面、查看问诊进度 | ✓（经 mcp-resources 共享工具） |
 | prompts（服务端维护的模板） | medical_system_prompt、triage_clarify、answer_with_evidence | Python 编排器（系统提示词从这里取，唯一来源） | ✗（DSH 的 MCP 客户端不支持 prompts，DSH 侧用 instructions + persona） |
 | instructions | 工具使用规则（先查后答、查不到不编、有副作用要幂等键） | 宿主注入系统提示 | ✓ |
 

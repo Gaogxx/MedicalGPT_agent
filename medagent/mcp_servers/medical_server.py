@@ -37,13 +37,15 @@ SYSTEM_PROMPT = """你是一名专业、谨慎的医疗健康助手，不能替�
 5. 急症（胸痛、呼吸困难、意识障碍、卒中表现、大出血等）立即建议拨打 120。
 6. 回答使用简洁中文，结尾提示仅供参考。"""
 
-INSTRUCTIONS = """医疗工具服务器（tools + resources + prompts）。规则：
+INSTRUCTIONS = """医疗工具服务器（8 个工具 + resources + prompts）。规则：
 1. 药品信息必须通过 search_drug 获取，不要凭记忆给出剂量；多药同服先调 check_interaction。
 2. 症状先 check_symptom；疾病管理建议用 search_guideline；以上都查不到时用 search_knowledge 检索知识库。
 3. 工具返回 found=false 时如实告知查不到，不得编造。
 4. book_appointment 有副作用，必须传 idempotency_key；失败重试时复用同一个 key。
-5. 知识库条目也可按 URI 直接读取：kb://drug/{name}、kb://symptom/{name}、kb://guideline/{topic}、kb://catalog；
-   search_knowledge 命中的本地文档可用 kb://doc/{id} 读全文；kb://sources 是各知识源的规模与可用状态。"""
+5. 一次咨询里有多个子问题、需要分别查证时，用 complex_consult（它会拆分子问题并分别查询、校验）；单一问题用上面的普通工具。
+6. 知识库条目也可按 URI 直接读取：kb://drug/{name}、kb://symptom/{name}、kb://guideline/{topic}、kb://catalog；
+   search_knowledge 命中的本地文档可用 kb://doc/{id} 读全文；kb://sources 是各知识源的规模与可用状态；
+   复杂问诊的进度可读 consult://run/{run_id}。"""
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, idempotent_hint=True, destructive_hint=False, open_world_hint=False)
 SIDE_EFFECT = ToolAnnotations(read_only_hint=False, idempotent_hint=True, destructive_hint=False, open_world_hint=True)
@@ -60,7 +62,9 @@ def _state_store():
     return InMemoryIdempotencyStore()
 
 
-def build_server() -> MCPServer:
+def build_server(consult: Any = "auto") -> MCPServer:
+    """consult：复杂问诊工具。"auto" = 按环境变量 MEDAGENT_CONSULT（默认开启），首次调用时用 configs/models.yaml 建模型池；
+    传 ConsultRunner 实例则用它（测试）；None = 不注册（编排器内部用的 Server，防止 worker 递归调用复杂问诊）。"""
     kb = load_kb()
     server = MCPServer("medical", instructions=INSTRUCTIONS, version="0.2.0")
     idem = _state_store()
@@ -144,6 +148,40 @@ def build_server() -> MCPServer:
         out = {"appointment_id": aid, "status": "cancelled"}
         idem.complete(key, out, ttl=86400)
         return {**out, "replayed": False}
+
+    # ------------------------------------------------------------------ 第 8 个工具：复杂问诊（Python 编排器）
+    if consult == "auto":
+        consult = consult if os.environ.get("MEDAGENT_CONSULT", "1") != "0" else None
+    if consult is not None:
+        from ..consult import DESCRIPTION, ConsultError
+        consult_holder: dict[str, Any] = {"runner": None if consult == "auto" else consult}
+
+        def _runner():
+            if consult_holder["runner"] is None:
+                from ..cli import _pool, _router
+                from ..consult import ConsultRunner
+                pool = _pool(os.environ.get("MEDAGENT_CONSULT_MOCK") == "1")
+                consult_holder["runner"] = ConsultRunner(pool, _router(pool))
+            return consult_holder["runner"]
+
+        @server.tool(annotations=READ_ONLY, description=DESCRIPTION)
+        async def complex_consult(question: str, history: str = "", resume: bool = False) -> dict[str, Any]:
+            q = _require(question, "question")
+            if len(q) > 2000 or len(history) > 6000:
+                raise ToolError("PARAM: question ≤ 2000 字，history ≤ 6000 字")
+            try:
+                return await _runner().run(q, history, resume=resume)
+            except ConsultError as exc:
+                raise ToolError(f"EXTERNAL: {exc}；用相同参数重试会从断点继续") from exc
+
+        @server.resource("consult://run/{run_id}", description="一次复杂问诊的检查点：当前节点、子问题、各 worker 状态",
+                         mime_type="application/json")
+        def consult_run(run_id: str) -> dict[str, Any]:
+            st = _runner().status(run_id)
+            if st is None:
+                from mcp.server.mcpserver.exceptions import ResourceNotFoundError
+                raise ResourceNotFoundError(f"consult://run/{run_id} not found")
+            return st
 
     # ------------------------------------------------------------------ Resources：只读知识，按 URI 寻址
     # 工具是“让模型做一件事”，资源是“让宿主读一份数据”。知识库条目做成资源后，宿主可以不经模型直接读取

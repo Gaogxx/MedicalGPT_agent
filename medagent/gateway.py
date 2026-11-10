@@ -7,8 +7,8 @@
       │                └ 最终回答 → 静默失败校验（必要时升级强模型重答）→ 输出安全关
       └── 工具 → dsh-mcp-client → medagent MCP Server（tools / resources）
 
-复杂问诊：路由器照常选档后，网关给 local / strong 模型多提供一个内部工具 complex_consult；模型调用它时，
-在本进程内运行 Python 编排器（medagent/consult.py），DSH 只收到最终回答。
+复杂问诊：complex_consult 是医疗工具 MCP Server 的第 8 个工具，和其它工具一样由模型决定调用、由 DSH 执行；
+DSH 带着它的结果再来请求时，网关直接把编排器的回答交给用户，不再让模型转述一遍。
 
 为什么这样接：DSH 只认“一个 OpenAI 兼容的模型端点”，路由、容错、校验放在端点后面对 DSH 完全透明，
 不需要改 DSH 源码（RouteLLM 官方也是以 OpenAI 兼容服务的形式提供路由）。
@@ -90,9 +90,8 @@ class NameMap:
 
 class RoutingGateway:
     def __init__(self, pool: Any, router: SafetyFirstRouter, audit_path: str | None = None,
-                 verifier: JevVerifier | None = None, consult: Any = None) -> None:
+                 verifier: JevVerifier | None = None) -> None:
         self.pool, self.router = pool, router
-        self.consult = consult          # ConsultRunner：复杂问诊在网关进程内运行（None = 关闭）
         self.verifier = verifier or JevVerifier(JevClient())   # JEV_BASE_URL 未配置时只用规则
         self.audit_path = audit_path
         self.stats = {"requests": 0, "strong": 0, "local": 0, "regenerated": 0, "leak_fixed": 0, "fallback": 0,
@@ -115,40 +114,23 @@ class RoutingGateway:
                     obs.append({"text": _text(m.get("content"))})
         return query, history, first, obs
 
-    async def _run_consult(self, body: dict[str, Any], question: str, history: str, a: Any,
-                           meta: dict[str, Any], reason: str) -> tuple[dict[str, Any], dict[str, Any]] | None:
-        """在网关进程内运行编排器。成功返回最终回答；暂停或失败返回 None，调用方退回普通单 agent 路径。"""
-        from .consult import ConsultError
-        try:
-            r = await self.consult.run(question, history[-3000:])
-        except ConsultError as err:
-            meta["repairs"].append(f"consult_failed:{err}"[:200])
-            return None
-        if r.get("status") != "done" or not r.get("answer"):
-            meta["repairs"].append(f"consult_{r.get('status')}")
-            return None
-        self.stats["consult"] += 1
-        # tier 保留路由器选的档（是哪个模型决定调用的），served_tier 标明实际由编排器作答
-        meta.update(reason=reason, served_tier="orchestrator", model="medagent-consult",
-                    consult={k: r.get(k) for k in ("run_id", "sub_questions", "repairs", "resumed", "replayed")})
-        self._audit(question, meta)
-        # 编排器已经校验 / 修复过回答，这里只过输出安全关
-        return self._response(body, guard_output(r["answer"], a), [], meta), meta
-
-    async def _maybe_consult(self, body, resp, query, history, a, meta, tier, msgs, raw_tools, events, kw):
-        """模型的回复里有 complex_consult 调用：网关拦下自己执行，不转给 DSH。
-        执行失败时用不带该工具的清单让同一档模型重答一次。返回 (最终响应或 None, 模型响应)。"""
+    @staticmethod
+    def _consult_result(messages: list[dict[str, Any]], names: "NameMap") -> dict[str, Any] | None:
+        """本轮（最后一条用户消息之后）complex_consult 工具的最新结果；没有或不是 JSON 时返回 None。"""
         from .consult import TOOL_NAME
-        call = next((c for c in resp.tool_calls if c.name == TOOL_NAME), None)
-        if call is None:
-            return None, resp
-        q = str(call.arguments.get("question") or query)
-        out = await self._run_consult(body, q, str(call.arguments.get("history") or history), a, meta,
-                                      f"consult:model_call:{tier}")
-        if out is not None:
-            return out, resp
-        retry = await self.pool.generate(tier, msgs, raw_tools if tier != "small" else None, events=events, **kw)
-        return None, retry
+        idx = max((i for i, m in enumerate(messages) if m.get("role") == "user"), default=-1)
+        ids: set[str] = set()
+        result = None
+        for m in messages[idx + 1:]:
+            if m.get("role") == "assistant":
+                ids |= {tc.get("id", "") for tc in m.get("tool_calls") or []
+                        if names.raw(tc.get("function", {}).get("name", "")) == TOOL_NAME}
+            elif m.get("role") == "tool" and m.get("tool_call_id") in ids:
+                try:
+                    result = json.loads(_text(m.get("content")))
+                except json.JSONDecodeError:
+                    result = None
+        return result if isinstance(result, dict) else None
 
     async def complete(self, body: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         self.stats["requests"] += 1
@@ -163,17 +145,19 @@ class RoutingGateway:
         meta: dict[str, Any] = {"tier": decision.tier, "reason": decision.reason, "fastpath": decision.fastpath and first,
                                 "repairs": []}
         tier = decision.tier
-        # 复杂问诊不再按规则直接触发：多意图问题和其它问题一样先由路由器选档（small / local / strong），
-        # 再由被选中的模型决定要不要调用内部工具 complex_consult。小模型档不带工具，门控也不会把多意图问题分给它。
-        consult_ok = self.consult is not None and not (a.level == "emergency" or a.crisis)
+        consult = self._consult_result(messages, names)
+        if consult and consult.get("status") == "done" and consult.get("answer"):
+            # 复杂问诊已经完成：编排器的回答拆过题、查过工具、校验过，直接交给用户（只过输出安全关），不让模型再转述
+            self.stats["consult"] += 1
+            meta.update(reason="consult:answer", served_tier="orchestrator", model="medagent-consult",
+                        consult={k: consult.get(k) for k in ("run_id", "sub_questions", "repairs", "resumed", "replayed")})
+            self._audit(query, meta)
+            return self._response(body, guard_output(consult["answer"], a), [], meta), meta
         if tier == "small" and not first:
             # 本轮已经进入工具循环（之前升级到了 local 并调用了工具）：不能再回落到不带工具的小模型
             tier = "local"
             meta["tier"], meta["reason"] = "local", decision.reason + "|in_tool_loop"
-        from .consult import TOOL_NAME, TOOL_SPEC
-        # 给 local / strong 模型的工具清单 = DSH 的医疗工具 + 只有网关知道的 complex_consult（DSH 看不到它）
-        model_tools = (raw_tools or []) + [TOOL_SPEC] if consult_ok else raw_tools
-        tools_for_tier = None if tier == "small" else model_tools
+        tools_for_tier = None if tier == "small" else raw_tools
         try:
             resp = await self.pool.generate(tier, msgs, tools_for_tier, events=events, **kw)
         except AgentError as err:
@@ -181,9 +165,6 @@ class RoutingGateway:
             meta.update(error=err.to_dict(), attribution=self.verifier.attribute(events))
             from .templates import kb_fallback_answer
             return self._response(body, guard_output(kb_fallback_answer(query, a, history), a), [], meta), meta
-        out, resp = await self._maybe_consult(body, resp, query, history, a, meta, tier, msgs, raw_tools, events, kw)
-        if out is not None:
-            return out
         if not resp.tool_calls:
             findings = detect(resp.content, query=query, assessment=a, observations=obs or None, history=history,
                               finish_reason=resp.finish_reason)
@@ -197,11 +178,7 @@ class RoutingGateway:
                 self.stats["regenerated"] += 1
                 meta["repairs"].append("escalate_local:" + verdict.reason)
                 try:
-                    resp, tier = await self.pool.generate("local", msgs, model_tools, events=events, **kw), "local"
-                    out, resp = await self._maybe_consult(body, resp, query, history, a, meta, tier, msgs, raw_tools,
-                                                          events, kw)
-                    if out is not None:
-                        return out
+                    resp, tier = await self.pool.generate("local", msgs, raw_tools, events=events, **kw), "local"
                     findings = detect(resp.content, query=query, assessment=a, observations=obs or None, history=history,
                                       finish_reason=resp.finish_reason) if not resp.tool_calls else []
                     verdict = await asyncio.to_thread(self.verifier.verify, query, resp.content,
@@ -214,12 +191,8 @@ class RoutingGateway:
                 self.stats["regenerated"] += 1
                 meta["repairs"].append("regenerate_strong:" + verdict.reason)
                 try:
-                    resp2 = await self.pool.generate("strong", msgs, model_tools, events=events, allow_cross_tier=False, **kw)
+                    resp2 = await self.pool.generate("strong", msgs, raw_tools, events=events, allow_cross_tier=False, **kw)
                     resp, tier = resp2, "strong"
-                    out, resp = await self._maybe_consult(body, resp, query, history, a, meta, tier, msgs, raw_tools,
-                                                          events, kw)
-                    if out is not None:
-                        return out
                 except AgentError as err:
                     meta["repairs"].append(f"strong_unavailable:{err.kind.value}")
         if resp.finish_reason == "tool_calls_recovered":
@@ -308,16 +281,12 @@ def create_app(gateway: RoutingGateway):
         return JSONResponse(resp, headers={"x-medagent-tier": str(meta.get("served_tier", meta["tier"])),
                                            "x-medagent-route": meta["reason"]})
 
-    async def consult_status(request: Request) -> JSONResponse:
-        st = gateway.consult.status(request.path_params["run_id"]) if gateway.consult else None
-        return JSONResponse(st or {"error": "not found"}, status_code=200 if st else 404)
-
     async def health(_: Request) -> JSONResponse:
         return JSONResponse({"stats": gateway.stats, "router": getattr(gateway.router, "source", "unknown"),
                              "breakers": {n: b.state() for n, b in gateway.pool.breakers.items()}})
 
     return Starlette(routes=[Route("/v1/models", models), Route("/v1/chat/completions", chat, methods=["POST"]),
-                             Route("/healthz", health), Route("/consult/{run_id}", consult_status)])
+                             Route("/healthz", health)])
 
 
 def main() -> None:
@@ -335,11 +304,7 @@ def main() -> None:
     import os
     os.makedirs(os.path.dirname(args.audit) or ".", exist_ok=True)
     pool = _pool(args.mock)
-    ap_consult = os.environ.get("MEDAGENT_CONSULT", "1") != "0"
-    from .consult import ConsultRunner
-    router = _router(pool)
-    consult = ConsultRunner(pool, router) if ap_consult else None
-    uvicorn.run(create_app(RoutingGateway(pool, router, args.audit, consult=consult)), host=args.host, port=args.port)
+    uvicorn.run(create_app(RoutingGateway(pool, _router(pool), args.audit)), host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

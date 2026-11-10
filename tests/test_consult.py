@@ -1,4 +1,4 @@
-"""复杂问诊：编排器在网关进程内运行，由规则或模型按需触发；worker 隔离、逐步检查点、中断续跑。"""
+"""复杂问诊：医疗工具 MCP Server 的第 8 个工具 complex_consult；worker 隔离、逐步检查点、中断续跑。"""
 import json
 
 import httpx
@@ -6,6 +6,7 @@ import httpx
 from medagent.agent import MedicalAgent
 from medagent.consult import TOOL_NAME, ConsultRunner, default_run_id
 from medagent.gateway import RoutingGateway, create_app
+from medagent.mcp_client import MCPToolbox
 from medagent.llm.pool import ModelPool
 from medagent.llm.providers import MockProvider, _default_mock_policy
 from medagent.mcp_servers.medical_server import build_server
@@ -114,9 +115,45 @@ async def test_consult_worker_cannot_call_side_effect_tools():
     assert med._medagent_state["appointments"] == {}
 
 
-# ---------------------------------------------------------------- 网关：路由选档 → 被选中的模型按需调用复杂问诊
-DSH_TOOLS = [{"type": "function", "function": {"name": "mcp__medical__search_drug", "description": "",
-                                                "parameters": {"type": "object", "properties": {}}}}]
+# ---------------------------------------------------------------- 作为 MCP 工具：第 8 个工具
+async def test_consult_is_eighth_mcp_tool_and_runs_orchestrator():
+    pool, _, _ = mock_pool()
+    async with MCPToolbox({"medical": build_server(consult=runner(pool))}) as tb:
+        assert list(tb.tools)[-1] == "complex_consult" and len(tb.tools) == 8
+        assert tb.tools["complex_consult"].read_only
+        r = await tb.call("complex_consult", {"question": Q})
+        assert r.ok and r.data["status"] == "done" and len(r.data["sub_questions"]) == 2
+        st = await tb.read_resource(f"consult://run/{r.data['run_id']}")
+        assert st["status"] == "done"
+
+
+async def test_consult_disabled_server_has_seven_tools():
+    async with MCPToolbox({"medical": build_server(consult=None)}) as tb:
+        assert "complex_consult" not in tb.tools and len(tb.tools) == 7
+
+
+async def test_orchestrator_workers_never_get_consult_tool():
+    """编排器自己的 worker 连的是带 8 个工具的 Server 时，也看不到、调不了 complex_consult（防递归）。"""
+    seen = []
+
+    def policy(messages, tools):
+        names = {t["function"]["name"] for t in tools or []}
+        seen.append(names)
+        if not any(m["role"] == "tool" for m in messages):
+            return LLMResponse("", [ToolCall(TOOL_NAME, {"question": "x"}, "c1")], "local")
+        return LLMResponse("已查询。仅供参考。", [], "local")
+
+    pool, _, _ = mock_pool(policy)
+    async with MCPToolbox({"medical": build_server(consult=runner(pool))}) as tb:
+        r = await MedicalAgent(pool, tb, SafetyFirstRouter(), CheckpointStore()).run("布洛芬有什么副作用")
+    assert all(TOOL_NAME not in names for names in seen if names)
+    assert any(e.get("source") == f"tool:{TOOL_NAME}" and not e["ok"] for e in r["events"])   # 调用被拒绝
+
+
+# ---------------------------------------------------------------- 网关：工具由 DSH 执行，网关只负责直接交付结果
+DSH_TOOLS = [{"type": "function", "function": {"name": f"mcp__medical__{n}", "description": "",
+                                                "parameters": {"type": "object", "properties": {}}}}
+             for n in ("search_drug", "check_symptom", TOOL_NAME)]
 
 
 def consult_caller(seen=None):
@@ -126,7 +163,7 @@ def consult_caller(seen=None):
     def policy(messages, tools):
         names = {t["function"]["name"] for t in tools or []}
         user = next(m["content"] for m in reversed(messages) if m["role"] == "user")
-        if seen is not None and TOOL_NAME in names:
+        if seen is not None:
             seen.append(sorted(names))
         if TOOL_NAME in names and multi_intent(user) and not any(m["role"] == "tool" for m in messages):
             return LLMResponse("", [ToolCall(TOOL_NAME, {"question": user}, "c1")], "local")
@@ -136,67 +173,56 @@ def consult_caller(seen=None):
 
 def gateway(policy=None):
     pool, local, strong = mock_pool(policy)
-    gw = RoutingGateway(pool, SafetyFirstRouter(), consult=runner(pool))
-    return gw, local, strong
+    return RoutingGateway(pool, SafetyFirstRouter()), local, strong
 
 
-async def test_multi_intent_is_routed_then_model_calls_consult():
+async def test_model_call_to_consult_is_returned_to_dsh():
     seen = []
-    gw, local, strong = gateway(consult_caller(seen))
+    gw, _, _ = gateway(consult_caller(seen))
     resp, meta = await gw.complete({"messages": [{"role": "user", "content": Q}], "tools": DSH_TOOLS})
-    msg = resp["choices"][0]["message"]
-    assert meta["tier"] in ("local", "strong")                       # 先由路由器选档
-    assert meta["reason"] == f"consult:model_call:{meta['tier']}"    # 再由被选中的模型决定调用
-    assert seen[0] == ["complex_consult", "search_drug"]             # 模型看到内部工具 + DSH 的工具（已去前缀）
-    assert "tool_calls" not in msg and "胃肠道" in msg["content"] and "高血压" in msg["content"]
-    assert len(meta["consult"]["sub_questions"]) == 2
+    calls = resp["choices"][0]["message"]["tool_calls"]
+    assert calls[0]["function"]["name"] == "mcp__medical__complex_consult"   # 和其它工具一样交回 DSH 执行
+    assert seen[0] == ["check_symptom", "complex_consult", "search_drug"]   # 模型看到的就是 DSH 给的工具（去前缀）
+    assert meta["tier"] in ("local", "strong")
 
 
-async def test_no_rule_trigger_when_model_does_not_choose_consult():
-    gw, _, _ = gateway()                                             # 默认 Mock 模型从不调用 complex_consult
-    resp, meta = await gw.complete({"messages": [{"role": "user", "content": Q}], "tools": DSH_TOOLS})
-    assert not meta["reason"].startswith("consult") and "consult" not in meta
-    assert resp["choices"][0]["message"].get("tool_calls")           # 模型自己调普通工具，交回 DSH 执行
+async def test_gateway_delivers_consult_result_directly():
+    gw, local, strong = gateway(consult_caller())
+    pool, _, _ = mock_pool()
+    result = await runner(pool).run(Q)                                 # DSH 经 MCP 执行后的工具结果
+    messages = [{"role": "user", "content": Q},
+                {"role": "assistant", "content": "", "tool_calls": [{"id": "c1", "type": "function", "function": {
+                    "name": "mcp__medical__complex_consult", "arguments": json.dumps({"question": Q})}}]},
+                {"role": "tool", "tool_call_id": "c1", "content": json.dumps(result, ensure_ascii=False)}]
+    calls_before = local.calls + strong.calls
+    resp, meta = await gw.complete({"messages": messages, "tools": DSH_TOOLS})
+    assert meta["reason"] == "consult:answer" and local.calls + strong.calls == calls_before   # 不再调模型转述
+    assert "胃肠道" in resp["choices"][0]["message"]["content"]
 
 
-async def test_small_tier_never_gets_consult_tool():
+async def test_consult_error_result_lets_model_continue():
+    gw, _, _ = gateway()
+    messages = [{"role": "user", "content": Q},
+                {"role": "assistant", "content": "", "tool_calls": [{"id": "c1", "type": "function", "function": {
+                    "name": "mcp__medical__complex_consult", "arguments": "{}"}}]},
+                {"role": "tool", "tool_call_id": "c1", "content": "Error executing tool complex_consult: EXTERNAL: 中断"}]
+    resp, meta = await gw.complete({"messages": messages, "tools": DSH_TOOLS})
+    assert meta["reason"] != "consult:answer"                          # 交给模型用普通工具继续
+
+
+async def test_small_tier_never_gets_tools():
     from medagent.router.policy import TieredRouter
     seen = []
     pool, _, _ = mock_pool(consult_caller(seen))
     pool.tiers["small"] = [MockProvider("small", policy=consult_caller(seen))]
-    gw = RoutingGateway(pool, TieredRouter(), consult=runner(pool))
+    gw = RoutingGateway(pool, TieredRouter())
     _, meta = await gw.complete({"messages": [{"role": "user", "content": "什么是BMI"}], "tools": DSH_TOOLS})
-    assert meta["tier"] == "small" and seen == []                    # 小模型档不带任何工具
+    assert meta["tier"] == "small" and seen == [[]]                    # 小模型档不带任何工具
 
 
-async def test_consult_failure_falls_back_to_same_tier_without_tool(monkeypatch):
-    async def boom(self, *a, **k):
-        raise RuntimeError("down")
-
-    monkeypatch.setattr(MedicalAgent, "_node_plan", boom)
-    gw, _, _ = gateway(consult_caller())
-    resp, meta = await gw.complete({"messages": [{"role": "user", "content": Q}], "tools": DSH_TOOLS})
-    assert any(r.startswith("consult_failed") for r in meta["repairs"])
-    assert not meta["reason"].startswith("consult")                  # 同一档模型不带复杂问诊工具重答
-    assert resp["choices"][0]["message"].get("tool_calls") or resp["choices"][0]["message"]["content"]
-
-
-async def test_emergency_skips_consult():
-    seen = []
-    gw, _, _ = gateway(consult_caller(seen))
-    _, meta = await gw.complete({"messages": [{"role": "user", "content": "我胸口剧痛冒冷汗，先说怎么办再说吃什么药"}],
-                                 "tools": DSH_TOOLS})
-    assert meta["reason"].startswith("emergency") and seen == []
-
-
-async def test_consult_progress_endpoint_and_stream():
-    gw, _, _ = gateway(consult_caller())
+async def test_stream_still_works():
+    gw, _, _ = gateway()
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(gw)), base_url="http://gw") as c:
-        r = await c.post("/v1/chat/completions", json={"messages": [{"role": "user", "content": Q}],
+        r = await c.post("/v1/chat/completions", json={"messages": [{"role": "user", "content": "布洛芬有什么副作用"}],
                                                        "tools": DSH_TOOLS, "stream": True})
-        content = "".join(json.loads(line[6:])["choices"][0]["delta"].get("content", "")
-                          for line in r.text.splitlines() if line.startswith("data: {"))
-        assert "胃肠道" in content
-        st = await c.get(f"/consult/{default_run_id(Q)}")
-        assert st.status_code == 200 and st.json()["status"] == "done"
-        assert (await c.get("/consult/cs-none")).status_code == 404
+        assert "data: [DONE]" in r.text

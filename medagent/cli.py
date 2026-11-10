@@ -3,7 +3,7 @@
   medagent ask "布洛芬有什么副作用"            # 用 configs/models.yaml 的真实模型（需 API key / vLLM）
   medagent ask --mock "我胸口剧痛冒冷汗"       # 离线 Mock 模型，验证编排与容错
   medagent pause <run_id> / medagent resume <run_id>
-  medagent pause <cs-run_id> --consult          # 暂停网关里正在跑的复杂问诊
+  medagent pause <cs-run_id> --consult          # 暂停正在跑的复杂问诊（MCP 工具 complex_consult）
   medagent-mcp [--http --port 8765]             # 启动医疗工具 MCP Server
 """
 from __future__ import annotations
@@ -95,7 +95,7 @@ def main() -> None:
     r.add_argument("--mock", action="store_true")
     p = sub.add_parser("pause")
     p.add_argument("run_id")
-    p.add_argument("--consult", action="store_true", help="暂停的是网关里“复杂问诊”的 run（cs-…，进度见 GET /consult/<run_id>）")
+    p.add_argument("--consult", action="store_true", help="暂停的是复杂问诊工具的 run（cs-…，进度读 MCP 资源 consult://run/<run_id>）")
     args = ap.parse_args()
     if args.cmd == "pause":
         state = Path(os.environ.get("MEDAGENT_STATE_DIR", ".medagent_state"))
