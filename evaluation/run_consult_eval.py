@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""“复杂问诊”MCP 工具的机制评测（Mock 模型，验证编排行为，不代表真实模型的回答质量）。
+"""复杂问诊（网关进程内运行的编排器）的机制评测（Mock 模型，验证编排行为，不代表真实模型的回答质量）。
 
   1. 触发：80 条 dev 问题里，网关的确定性规则会把哪些交给复杂问诊；
   2. 完整性：同一个 Mock 模型，单 agent（不拆子问题）vs 复杂问诊（拆子问题 + 隔离 worker），多意图题的子问题覆盖率；
-  3. 中断续跑：在每个节点注入一次崩溃，用相同参数重试，看能否续跑完成、多花了几次模型调用；
+  3. 中断续跑：在每个节点注入一次崩溃（模拟网关进程退出），重启后同一请求再来，看能否续跑完成、多花了几次模型调用；
   4. 重放：已完成的问诊再调用一次的模型调用数。
 
 输出：evaluation/results/consult_eval.json
@@ -25,14 +25,25 @@ from medagent.agent import AgentConfig, MedicalAgent  # noqa: E402
 from medagent.llm.pool import ModelPool  # noqa: E402
 from medagent.llm.providers import MockProvider  # noqa: E402
 from medagent.mcp_client import MCPToolbox  # noqa: E402
-from medagent.mcp_servers.consult_server import build_consult_server  # noqa: E402
+from medagent.consult import ConsultError, ConsultRunner  # noqa: E402
 from medagent.mcp_servers.medical_server import build_server  # noqa: E402
 from medagent.resilience.checkpoint import CheckpointStore  # noqa: E402
 from medagent.resilience.retry import RetryPolicy  # noqa: E402
 from medagent.router.policy import SafetyFirstRouter  # noqa: E402
 from medagent.verify.detectors import multi_intent  # noqa: E402
 
-NO_RETRY = RetryPolicy(max_attempts={}, base_delay=0)
+
+
+def runner(pl, store=None, attempts=1):
+    """attempts=1：不在进程内自动重试，模拟进程崩溃后由新进程续跑。"""
+    return ConsultRunner(pl, SafetyFirstRouter(), store or CheckpointStore(), max_attempts=attempts)
+
+
+async def try_run(r, q):
+    try:
+        return await r.run(q)
+    except ConsultError:
+        return None
 
 
 def pool():
@@ -52,11 +63,10 @@ async def completeness(cases: list[dict]) -> dict:
             single = await MedicalAgent(pl, tb, SafetyFirstRouter(), CheckpointStore(),
                                         cfg=AgentConfig(max_workers=1)).run(c["query"])
         pl2, _ = pool()
-        async with MCPToolbox({"consult": build_consult_server(lambda: pl2, CheckpointStore())}) as tb:
-            r = await tb.call("complex_consult", {"question": c["query"]})
+        r = await try_run(runner(pl2, attempts=2), c["query"])
         rows.append({"query": c["query"], "single_ok": must_cover_ok(single["answer"], c["must_cover"]),
-                     "consult_ok": r.ok and must_cover_ok(r.data["answer"], c["must_cover"]),
-                     "sub_questions": r.data["sub_questions"] if r.ok else None})
+                     "consult_ok": bool(r) and must_cover_ok(r["answer"], c["must_cover"]),
+                     "sub_questions": r["sub_questions"] if r else None})
     n = len(rows)
     return {"n": n, "single_agent": sum(r["single_ok"] for r in rows) / n,
             "complex_consult": sum(r["consult_ok"] for r in rows) / n, "rows": rows}
@@ -64,8 +74,7 @@ async def completeness(cases: list[dict]) -> dict:
 
 async def crash_resume(query: str) -> list[dict]:
     pl, ps = pool()
-    async with MCPToolbox({"consult": build_consult_server(lambda: pl, CheckpointStore())}, retry=NO_RETRY) as tb:
-        await tb.call("complex_consult", {"question": query})
+    await runner(pl).run(query)
     clean = calls(ps)
     out = []
     for node in ("route", "plan", "work", "aggregate", "verify", "respond"):
@@ -81,16 +90,17 @@ async def crash_resume(query: str) -> list[dict]:
 
         setattr(MedicalAgent, f"_node_{node}", crash)
         try:
-            async with MCPToolbox({"consult": build_consult_server(lambda: pl, CheckpointStore())}, retry=NO_RETRY) as tb:
-                first = await tb.call("complex_consult", {"question": query})
-                second = await tb.call("complex_consult", {"question": query})
-                replay_before = calls(ps)
-                third = await tb.call("complex_consult", {"question": query})
+            store = CheckpointStore()
+            first = await try_run(runner(pl, store), query)            # 崩溃
+            second = await try_run(runner(pl, store), query)           # 新进程，同一请求 → 续跑
+            replay_before = calls(ps)
+            third = await try_run(runner(pl, store), query)            # 已完成 → 直接返回检查点
         finally:
             setattr(MedicalAgent, f"_node_{node}", orig)
-        out.append({"crash_at": node, "first_failed": not first.ok, "resumed_done": second.ok and second.data["status"] == "done",
+        out.append({"crash_at": node, "first_failed": first is None,
+                    "resumed_done": bool(second) and second["status"] == "done",
                     "model_calls": replay_before, "clean_model_calls": clean,
-                    "replay_model_calls": calls(ps) - replay_before, "replayed": third.ok and third.data["replayed"]})
+                    "replay_model_calls": calls(ps) - replay_before, "replayed": bool(third) and third["replayed"]})
     # worker 级：w0 已完成落盘，w1 做完模型调用但在落盘前崩溃 → 续跑只重做 w1
     pl, ps = pool()
     orig_w = MedicalAgent._run_worker
@@ -105,13 +115,13 @@ async def crash_resume(query: str) -> list[dict]:
 
     MedicalAgent._run_worker = crash_w1
     try:
-        async with MCPToolbox({"consult": build_consult_server(lambda: pl, CheckpointStore())}, retry=NO_RETRY) as tb:
-            first = await tb.call("complex_consult", {"question": query})
-            second = await tb.call("complex_consult", {"question": query})
+        store = CheckpointStore()
+        first = await try_run(runner(pl, store), query)
+        second = await try_run(runner(pl, store), query)
     finally:
         MedicalAgent._run_worker = orig_w
-    out.append({"crash_at": "work:w1（w0 已完成）", "first_failed": not first.ok,
-                "resumed_done": second.ok and second.data["status"] == "done", "model_calls": calls(ps),
+    out.append({"crash_at": "work:w1（w0 已完成）", "first_failed": first is None,
+                "resumed_done": bool(second) and second["status"] == "done", "model_calls": calls(ps),
                 "clean_model_calls": clean, "replay_model_calls": None, "replayed": None})
     return out
 

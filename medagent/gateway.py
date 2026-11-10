@@ -7,6 +7,9 @@
       │                └ 最终回答 → 静默失败校验（必要时升级强模型重答）→ 输出安全关
       └── 工具 → dsh-mcp-client → medagent MCP Server（tools / resources）
 
+复杂问诊：多意图问题由规则触发、或模型调用内部工具 complex_consult 时，在本进程内运行 Python 编排器（medagent/consult.py），
+DSH 只收到最终回答。
+
 为什么这样接：DSH 只认“一个 OpenAI 兼容的模型端点”，路由、容错、校验放在端点后面对 DSH 完全透明，
 不需要改 DSH 源码（RouteLLM 官方也是以 OpenAI 兼容服务的形式提供路由）。
 
@@ -34,8 +37,6 @@ from .verify.detectors import detect, multi_intent
 from .verify.jev import JevClient, JevVerifier
 
 GUARD_FIXABLE = {"emergency_missing", "prescription_in_high_risk"}
-CONSULT_TOOL = "complex_consult"      # medagent.mcp_servers.consult_server：Python 编排器包成的 MCP 工具
-CONSULT_MAX_CALLS = 2                 # 同一轮里最多发起 2 次（第 2 次 = 中断后用相同参数续跑）
 
 
 def _text(content: Any) -> str:
@@ -89,8 +90,9 @@ class NameMap:
 
 class RoutingGateway:
     def __init__(self, pool: Any, router: SafetyFirstRouter, audit_path: str | None = None,
-                 verifier: JevVerifier | None = None) -> None:
+                 verifier: JevVerifier | None = None, consult: Any = None) -> None:
         self.pool, self.router = pool, router
+        self.consult = consult          # ConsultRunner：复杂问诊在网关进程内运行（None = 关闭）
         self.verifier = verifier or JevVerifier(JevClient())   # JEV_BASE_URL 未配置时只用规则
         self.audit_path = audit_path
         self.stats = {"requests": 0, "strong": 0, "local": 0, "regenerated": 0, "leak_fixed": 0, "fallback": 0,
@@ -113,43 +115,24 @@ class RoutingGateway:
                     obs.append({"text": _text(m.get("content"))})
         return query, history, first, obs
 
-    @staticmethod
-    def _consult_state(messages: list[dict[str, Any]], names: "NameMap") -> tuple[int, dict[str, Any] | None, Any]:
-        """本轮（最后一条用户消息之后）复杂问诊工具的情况：(已发起次数, 最近一次的参数, 最近一次的结果)。
-        结果是解析后的 JSON；工具报错（DSH 传回的是错误文本）时是字符串。"""
-        idx = max((i for i, m in enumerate(messages) if m.get("role") == "user"), default=-1)
-        calls: dict[str, dict[str, Any]] = {}
-        order: list[str] = []
-        results: dict[str, Any] = {}
-        for m in messages[idx + 1:]:
-            if m.get("role") == "assistant":
-                for tc in m.get("tool_calls") or []:
-                    if names.raw(tc.get("function", {}).get("name", "")) == CONSULT_TOOL:
-                        try:
-                            args = json.loads(tc["function"].get("arguments") or "{}")
-                        except json.JSONDecodeError:
-                            args = {}
-                        calls[tc.get("id", "")] = args
-                        order.append(tc.get("id", ""))
-            elif m.get("role") == "tool" and m.get("tool_call_id") in calls:
-                text = _text(m.get("content"))
-                try:
-                    results[m["tool_call_id"]] = json.loads(text)
-                except json.JSONDecodeError:
-                    results[m["tool_call_id"]] = text
-        if not order:
-            return 0, None, None
-        last = order[-1]
-        return len(order), calls[last], results.get(last)
-
-    def _consult_call(self, body: dict[str, Any], names: "NameMap", args: dict[str, Any], meta: dict[str, Any],
-                      query: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    async def _run_consult(self, body: dict[str, Any], question: str, history: str, a: Any,
+                           meta: dict[str, Any], reason: str) -> tuple[dict[str, Any], dict[str, Any]] | None:
+        """在网关进程内运行编排器。成功返回最终回答；暂停或失败返回 None，调用方退回普通单 agent 路径。"""
+        from .consult import ConsultError
+        try:
+            r = await self.consult.run(question, history[-3000:])
+        except ConsultError as err:
+            meta["repairs"].append(f"consult_failed:{err}"[:200])
+            return None
+        if r.get("status") != "done" or not r.get("answer"):
+            meta["repairs"].append(f"consult_{r.get('status')}")
+            return None
         self.stats["consult"] += 1
-        call = {"id": f"call_{uuid.uuid4().hex[:8]}", "type": "function",
-                "function": {"name": names.full(CONSULT_TOOL), "arguments": json.dumps(args, ensure_ascii=False)}}
-        meta.update(served_tier="orchestrator", model="medagent-consult")
-        self._audit(query, meta)
-        return self._response(body, "", [call], meta), meta
+        meta.update(tier="orchestrator", reason=reason, served_tier="orchestrator", model="medagent-consult",
+                    consult={k: r.get(k) for k in ("run_id", "sub_questions", "repairs", "resumed", "replayed")})
+        self._audit(question, meta)
+        # 编排器已经校验 / 修复过回答，这里只过输出安全关
+        return self._response(body, guard_output(r["answer"], a), [], meta), meta
 
     async def complete(self, body: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         self.stats["requests"] += 1
@@ -164,30 +147,22 @@ class RoutingGateway:
         meta: dict[str, Any] = {"tier": decision.tier, "reason": decision.reason, "fastpath": decision.fastpath and first,
                                 "repairs": []}
         tier = decision.tier
-        if CONSULT_TOOL in names.to_full and not (a.level == "emergency" or a.crisis):
-            n_calls, last_args, result = self._consult_state(messages, names)
-            if first and multi_intent(query):
-                # 多意图问题：不调模型，直接让 DSH 调“复杂问诊”工具——拆子问题、worker 隔离、逐步检查点都在工具里完成
-                meta.update(tier="orchestrator", reason="consult:multi_intent")
-                return self._consult_call(body, names, {"question": query, "history": history[-3000:]}, meta, query)
-            if isinstance(result, dict) and result.get("status") == "done" and result.get("answer"):
-                # 工具返回的回答已经在编排器里校验 / 修复过：原样交给用户（只过输出安全关），不再让模型转述一遍
-                meta.update(tier="orchestrator", reason="consult:answer", served_tier="orchestrator",
-                            model="medagent-consult", consult={k: result.get(k) for k in
-                                                               ("run_id", "sub_questions", "repairs", "resumed", "replayed")})
-                self._audit(query, meta)
-                return self._response(body, guard_output(result["answer"], a), [], meta), meta
-            if last_args is not None and not isinstance(result, dict) and n_calls < CONSULT_MAX_CALLS:
-                # 工具报错 / 超时（MCP Server 重启、模型超时……）：用相同参数再发一次 → 同一个 run_id → 从检查点续跑
-                meta.update(tier="orchestrator", reason="consult:resume_after_error")
-                meta["repairs"].append("consult_retry_resume")
-                return self._consult_call(body, names, last_args, meta, query)
-            # 其余情况（暂停、重试后仍失败）：交给模型用普通工具继续
+        consult_ok = self.consult is not None and not (a.level == "emergency" or a.crisis)
+        if consult_ok and first and multi_intent(query):
+            # 规则触发：明显的多意图问题，直接在网关里运行编排器（拆子问题、隔离 worker、逐步检查点）
+            out = await self._run_consult(body, query, history, a, meta, "consult:multi_intent")
+            if out is not None:
+                return out
+            consult_ok = False          # 编排器没跑成：本请求退回普通路径，也不再把内部工具交给模型
         if tier == "small" and not first:
             # 本轮已经进入工具循环（之前升级到了 local 并调用了工具）：不能再回落到不带工具的小模型
             tier = "local"
             meta["tier"], meta["reason"] = "local", decision.reason + "|in_tool_loop"
         tools_for_tier = None if tier == "small" else raw_tools
+        if consult_ok and tier != "small":
+            # 模型按需调用：工具清单里加一个只有网关知道的 complex_consult，DSH 看不到它
+            from .consult import TOOL_SPEC
+            tools_for_tier = (tools_for_tier or []) + [TOOL_SPEC]
         try:
             resp = await self.pool.generate(tier, msgs, tools_for_tier, events=events, **kw)
         except AgentError as err:
@@ -195,6 +170,16 @@ class RoutingGateway:
             meta.update(error=err.to_dict(), attribution=self.verifier.attribute(events))
             from .templates import kb_fallback_answer
             return self._response(body, guard_output(kb_fallback_answer(query, a, history), a), [], meta), meta
+        from .consult import TOOL_NAME
+        consult_call = next((c for c in resp.tool_calls if c.name == TOOL_NAME), None)
+        if consult_call is not None:
+            # 模型选择了复杂问诊：网关拦下这个调用自己执行，不转给 DSH
+            q = str(consult_call.arguments.get("question") or query)
+            out = await self._run_consult(body, q, str(consult_call.arguments.get("history") or history), a, meta,
+                                          "consult:model_call")
+            if out is not None:
+                return out
+            resp = await self.pool.generate(tier, msgs, raw_tools if tier != "small" else None, events=events, **kw)
         if not resp.tool_calls:
             findings = detect(resp.content, query=query, assessment=a, observations=obs or None, history=history,
                               finish_reason=resp.finish_reason)
@@ -270,7 +255,13 @@ class RoutingGateway:
         if first and (a.level == "emergency" or a.crisis):
             yield chunk({"content": EMERGENCY_BANNER + "\n\n"})
             banner_sent = True
-        resp, _ = await self.complete({**body, "stream": False})
+        task = asyncio.ensure_future(self.complete({**body, "stream": False}))
+        while not task.done():
+            # 复杂问诊可能要几十秒：期间每 5 秒发一个 SSE 注释保活，客户端会忽略它，但连接不会因空闲被断开
+            done, _ = await asyncio.wait({task}, timeout=5)
+            if not done:
+                yield ": keepalive\n\n"
+        resp, _ = task.result()
         msg = resp["choices"][0]["message"]
         content = msg.get("content") or ""
         if banner_sent:
@@ -305,12 +296,16 @@ def create_app(gateway: RoutingGateway):
         return JSONResponse(resp, headers={"x-medagent-tier": str(meta.get("served_tier", meta["tier"])),
                                            "x-medagent-route": meta["reason"]})
 
+    async def consult_status(request: Request) -> JSONResponse:
+        st = gateway.consult.status(request.path_params["run_id"]) if gateway.consult else None
+        return JSONResponse(st or {"error": "not found"}, status_code=200 if st else 404)
+
     async def health(_: Request) -> JSONResponse:
         return JSONResponse({"stats": gateway.stats,
                              "breakers": {n: b.state() for n, b in gateway.pool.breakers.items()}})
 
     return Starlette(routes=[Route("/v1/models", models), Route("/v1/chat/completions", chat, methods=["POST"]),
-                             Route("/healthz", health)])
+                             Route("/healthz", health), Route("/consult/{run_id}", consult_status)])
 
 
 def main() -> None:
@@ -328,7 +323,11 @@ def main() -> None:
     import os
     os.makedirs(os.path.dirname(args.audit) or ".", exist_ok=True)
     pool = _pool(args.mock)
-    uvicorn.run(create_app(RoutingGateway(pool, _router(pool), args.audit)), host=args.host, port=args.port)
+    ap_consult = os.environ.get("MEDAGENT_CONSULT", "1") != "0"
+    from .consult import ConsultRunner
+    router = _router(pool)
+    consult = ConsultRunner(pool, router) if ap_consult else None
+    uvicorn.run(create_app(RoutingGateway(pool, router, args.audit, consult=consult)), host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
