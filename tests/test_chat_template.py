@@ -114,8 +114,9 @@ def test_tool_call_roundtrip_with_dict_or_string_arguments():
 
 # ---------------------------------------------------------------- OpenAI 格式为准：训练实际走 OpenAI → MedicalGPT 输入
 def test_openai_canonical_data_renders_like_training_text():
-    for kind in ("sft", "dpo"):
-        for r in rows(ROOT / "training" / "data" / "openai_v3" / kind / "val.jsonl"):
+    files = [("sft", "val.jsonl"), ("sft", "val_consult.jsonl"), ("dpo", "val.jsonl")]
+    for kind, name in files:
+        for r in rows(ROOT / "training" / "data" / "openai_v3" / kind / name):
             mg = ef.openai_row_to_medicalgpt(r)
             msgs = r["messages"] + ([r["chosen"]] if kind == "dpo" else [])
             conv = mg["conversations"] + ([{"from": "gpt", "value": mg["chosen"]}] if kind == "dpo" else [])

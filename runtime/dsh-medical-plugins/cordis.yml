@@ -6,7 +6,7 @@
 # - 医疗工具改为 MCP：通过 @deepseek-ai/dsh-mcp-client 连接 Python MCP Server（medagent.mcp_servers.medical_server），
 #   不再用 ctx.tools.register 往 tool registry 里塞 TS 实现。模型看到的工具名为 mcp__medical__<tool>
 
-# 1. 默认模型 → medagent 路由网关（后面是微调 MedicalGPT + 云端医疗大模型）；直连微调模型改成 vllm-medical / medical-agent
+# 1. 默认模型 → medagent 路由网关（后面是三档模型：Qwen3.5-2B / 微调 MedicalGPT / 百川 → DeepSeek）
 - id: agent-default-model
   config:
     provider: medagent-router

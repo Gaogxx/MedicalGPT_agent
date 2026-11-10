@@ -264,7 +264,8 @@ def main() -> None:
         out += ["## 12. 复杂问诊（网关内运行编排器：worker 隔离与逐步检查点）", "",
                 f"> {ce['note']}。", "",
                 "| 指标 | 结果 |", "|---|---|",
-                f"| dev 80 题中网关触发复杂问诊 | {t['triggered']} 题（标注了多个必答要点的 {t['multi_part_must_cover']} 题全部触发） |",
+                f"| dev 80 题中能拆成多个子问题的 | {t['splittable']} 题（标注了多个必答要点的 {t['multi_part_must_cover']} 题里 {t['multi_part_splittable']} 题能拆） |",
+                f"| 这些多要点题被路由器分到 | " + "、".join(f"{k} {v} 题" for k, v in t["multi_part_routed_tiers"].items()) + "（由被选中的模型决定是否调用复杂问诊） |",
                 f"| 多意图子问题覆盖率：单 agent → 复杂问诊 | {pct(c['single_agent'])} → {pct(c['complex_consult'])}（{c['n']} 题） |"]
         for r in ce["crash_resume"]:
             extra = (f"，再调用一次的模型调用 {r['replay_model_calls']} 次（直接返回检查点）" if r["replay_model_calls"] is not None

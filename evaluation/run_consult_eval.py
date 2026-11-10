@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """复杂问诊（网关进程内运行的编排器）的机制评测（Mock 模型，验证编排行为，不代表真实模型的回答质量）。
 
-  1. 触发：80 条 dev 问题里，网关的确定性规则会把哪些交给复杂问诊；
+  1. 拆分与路由：80 条 dev 问题里哪些能拆成多个子问题、这些题被路由器分到哪一档（复杂问诊由被选中的模型决定调用，
+     不再按规则触发；真实模型会不会调用，要等用 consult_samples.py 的数据重训后用 run_live_eval.py 测）；
   2. 完整性：同一个 Mock 模型，单 agent（不拆子问题）vs 复杂问诊（拆子问题 + 隔离 worker），多意图题的子问题覆盖率；
   3. 中断续跑：在每个节点注入一次崩溃（模拟网关进程退出），重启后同一请求再来，看能否续跑完成、多花了几次模型调用；
   4. 重放：已完成的问诊再调用一次的模型调用数。
@@ -30,7 +31,6 @@ from medagent.mcp_servers.medical_server import build_server  # noqa: E402
 from medagent.resilience.checkpoint import CheckpointStore  # noqa: E402
 from medagent.resilience.retry import RetryPolicy  # noqa: E402
 from medagent.router.policy import SafetyFirstRouter  # noqa: E402
-from medagent.verify.detectors import multi_intent  # noqa: E402
 
 
 
@@ -128,14 +128,24 @@ async def crash_resume(query: str) -> list[dict]:
 
 async def main() -> None:
     cases = [json.loads(line) for line in open(ROOT / "evaluation" / "datasets" / "agent_eval_dev.jsonl", encoding="utf-8")]
-    trig = [c for c in cases if multi_intent(c["query"])]
-    mc = [c for c in cases if c.get("must_cover")]
-    multi_mc = [c for c in mc if len(c["must_cover"]) >= 2]
+    from medagent.cli import _router
+    from medagent.rag.rewrite import QueryRewriter
+    rw = QueryRewriter()
+    pl, _ = pool()
+    pl.tiers["small"] = [MockProvider("small")]
+    router = _router(pl)                                    # 线上同款：安全规则 → MF → 小模型门控
+    split = [c for c in cases if len(rw.rewrite(c["query"]).sub_queries) >= 2]
+    multi_mc = [c for c in cases if len(c.get("must_cover") or []) >= 2]
+    tiers = {}
+    for c in multi_mc:
+        t = router.route(c["query"]).tier
+        tiers[t] = tiers.get(t, 0) + 1
     res = {
         "note": "Mock 模型：验证编排机制（拆分 / 隔离 / 检查点 / 续跑），不代表真实模型回答质量",
-        "trigger": {"dev_total": len(cases), "triggered": len(trig), "triggered_queries": [c["query"] for c in trig],
+        "trigger": {"dev_total": len(cases), "splittable": len(split), "splittable_queries": [c["query"] for c in split],
                     "multi_part_must_cover": len(multi_mc),
-                    "multi_part_triggered": sum(1 for c in multi_mc if multi_intent(c["query"]))},
+                    "multi_part_splittable": sum(1 for c in multi_mc if len(rw.rewrite(c["query"]).sub_queries) >= 2),
+                    "multi_part_routed_tiers": tiers},
         "completeness": await completeness(multi_mc),
         "crash_resume": await crash_resume("先说说布洛芬的副作用，再说说高血压饮食注意什么"),
     }

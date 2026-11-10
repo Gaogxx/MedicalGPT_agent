@@ -50,7 +50,7 @@ flowchart LR
     GW -- strong --> S["Baichuan-M3 → DeepSeek"]
     OPD --> L
     DSH -- "dsh-mcp-client" --> MCP[("medagent MCP Server<br/>tools · resources · prompts")]
-    GW -- "复杂问诊（规则或模型按需）" --> CS["Python 编排器<br/>拆子问题 · worker 隔离 · 逐步检查点"]
+    GW -- "复杂问诊（模型按需调用）" --> CS["Python 编排器<br/>拆子问题 · worker 隔离 · 逐步检查点"]
     CS -- "只读工具" --> MCP
     MCP --> RAG["RAG：改写 → BM25/向量/KG/本地 329 万篇/在线文献 → RRF → 重排 → 压缩 → 缓存"]
     MCP --> KB[("精选 KB + Wikidata 实体层")]
@@ -58,7 +58,7 @@ flowchart LR
 
 - **DSH 是主运行时，微调 MedicalGPT 是本地模型**：DSH 的模型请求先进 `medagent` 路由网关（`python -m medagent.gateway`），由网关在微调 MedicalGPT（vLLM）与云端医疗大模型之间路由，并做熔断、重试、泄漏修正、回答校验和安全关；DSH 继续负责 agent 循环、会话和界面。配置见 `runtime/dsh-medical-plugins/settings.yaml` 与 `cordis.yml`。
 - **工具层改为 MCP**：Python MCP Server 提供 tools（7 个）、resources（知识库条目、目录、来源、知识源状态 `kb://sources`、检索命中文档全文 `kb://doc/{id}`）、prompts（系统提示、追问模板、带证据作答）；DSH 通过官方 `@deepseek-ai/dsh-mcp-client` 接入。调度由宿主（DSH / 编排器）负责，Server 只提供能力。原 `index.ts` 的 `ctx.tools.register` 已移除。
-- **复杂问诊在模型侧按需调用**：Python 编排器（Router–Worker、逐步检查点）运行在路由网关进程内。明显的多意图问题（“先…再…”“药和饮食”）由规则直接触发；其余问题由模型决定——网关给 local / strong 模型多提供一个内部工具 `complex_consult`，模型调用时网关拦下并运行编排器，DSH 只收到最终回答。编排器拆子问题，每个 worker 只拿子问题 + 患者槽位 + 只读工具；中断后同一请求再来即从检查点续跑，已完成的 worker 不重跑。见 [架构 v2 §2](docs/architecture_v2.md)。
+- **复杂问诊在模型侧按需调用**：Python 编排器（Router–Worker、逐步检查点）运行在路由网关进程内。多意图问题和其它问题一样先由路由器选档，再由被选中的模型决定：网关给 local / strong 模型的工具清单里多一个内部工具 `complex_consult`，模型调用时网关拦下并运行编排器，DSH 只收到最终回答。编排器拆子问题，每个 worker 只拿子问题 + 患者槽位 + 只读工具；中断后同一请求再来即从检查点续跑，已完成的 worker 不重跑。见 [架构 v2 §2](docs/architecture_v2.md)。
 - **知识库分三层**：①精选 KB（`build_kb.py` 合并原仓库两份不一致的手写表，21 症状 / 10 药 / 9 指南，含用法禁忌）②Wikidata 实体层（2,395 疾病 + 2,483 药物，ICD-10 / ATC 编码，CC0）③本地百万级全文索引（Huatuo + shibing624，3,287,539 篇，SQLite FTS5）+ 在线文献（PubMed 4,141 万 / Europe PMC 4,919 万条，实时检索）。所有条目标注来源与“未经审核”。
 - **路由三档**：small（Qwen3.5-2B，只答通过门控的概念/科普题）/ local（微调 MedicalGPT，RouteLLM 意义上的弱模型，默认档）/ strong（Baichuan-M3 → DeepSeek），安全规则优先，小模型答砸逐级升级，见 [架构 v2 §4](docs/architecture_v2.md)。
 - **Jev 校验与归因**：按自定的类型化契约接入（静默失败 Noul / 归因 Choice / 质量 Score），规则优先、Jev 补语义类失败，不可用时只用规则，见 [docs/jev_adapter.md](docs/jev_adapter.md)。
@@ -128,6 +128,7 @@ MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 
 | 2026-11-09 | 小模型档 | Qwen3.5-2B 实测 80 条真实问题（非思考、无工具） | 门控分给它的 10 题全部通过；全部 80 题自动通过率 81.3%（微调 MedicalGPT 73.8%），药品事实覆盖 0.75（MedicalGPT 0.88） |
 | 2026-11-09 | 复杂问诊 MCP 工具 | 编排器包成 `complex_consult`，网关对多意图问题确定性触发，出错用相同参数续跑 | Mock 机制评测：7 个崩溃点重试后全部续跑完成，worker 级崩溃只重做未完成的 worker；多意图子问题覆盖 66.7%→83.3%；同时修复了编排器在子问题多于 worker 上限时截断丢题、“X有什么药和饮食建议”拆不开两个问题 |
 | 2026-11-10 | 复杂问诊并入网关 | 编排器从单独的 MCP Server 移进路由网关进程，规则触发 + 模型通过内部工具按需调用；出错自动续跑一次，仍失败退回单 agent | 少一个 DSH 插件实例和一个 MCP Server 进程，少一轮工具往返；7 个崩溃点续跑、子问题覆盖 83.3% 不变 |
+| 2026-11-10 | 复杂问诊改由模型决定 | 去掉规则触发：先路由选档，再由被选中的模型决定是否调用；补“何时调用”训练数据（正例 400 / 反例 400）；补全子问题拆分规则（分句、“A和B分别…”） | 8 种多意图问法可拆分的从 3 种增至 8 种；真实问答检索 Recall@5 0.469 → 0.476；4 个评测集里被误拆的单一问题 1 条 |
 
 ## 🔧 关键问题解决方案
 
@@ -168,7 +169,7 @@ DeepSeek Harness 处于 developer preview（存在 breaking change）。医疗�
 | 组件 | 技术 | 说明 |
 |------|------|------|
 | 工具协议 | MCP（Python SDK 2.x `MCPServer` / `Client`） | 替代原 tool registry；DSH 用 `dsh-mcp-client` 接入 |
-| 编排 | `medagent`（Router–Worker） | 检查点、暂停/恢复、并行 worker；在网关内由规则或模型按需调用 |
+| 编排 | `medagent`（Router–Worker） | 检查点、暂停/恢复、并行 worker；在网关内由模型按需调用 |
 | 路由 | 安全规则 + RouteLLM 矩阵分解路由（numpy 复现）+ 小模型门控 | small / local / strong 三档 |
 | 模型 | small：Qwen3.5-2B / local：微调 MedicalGPT（vLLM）/ strong：Baichuan-M3 → DeepSeek | OpenAI 兼容接口，`configs/models.yaml` |
 | 推理 | vLLM + 自定义对话模板 + hermes 工具解析器 | 训练 / 推理格式逐字一致 |
