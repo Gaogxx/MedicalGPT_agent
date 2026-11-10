@@ -12,7 +12,8 @@
 | 训练方式 | QLoRA（4-bit），LoRA rank 16 | 9B 的 bf16 权重约 19GB，单卡 24GB 放不下 LoRA 训练的激活；48GB 卡可改 bf16 LoRA |
 | 推理 | vLLM ≥ 0.17 + 本仓库对话模板 + hermes 解析器 | 见第 2 节 |
 | 数据格式 | **OpenAI 格式为准**（`training/data/openai_v3/`） | messages + tools，与线上请求同构；MedicalGPT 的输入由它自动生成 |
-| 数据量 | SFT 20,663 条 / DPO 2,971 对 / OPD 2,100 条 | 最长样本 1,529 token，`model_max_length` 取 2048 |
+| 数据量 | SFT 20,663 条 + 复杂问诊调用 880 条 / DPO 2,971 对 / OPD 2,100 条 | 最长样本 1,529 token，`model_max_length` 取 2048 |
+| 复杂问诊 | `consult_samples.py`：多意图 → 调用 `complex_consult`（训练 400 / 验证 40），单一问题 → 调普通工具（400 / 40），验证集用训练没见过的两种问法 | 网关不再按规则触发，要靠模型自己判断 |
 | 流程 | SFT → DPO → OPD | 与 2026-09 原项目同顺序；OPD 教师 Qwen3.5-27B（与 9B 词表相同，248,320） |
 
 ## 2. 先解决的问题：训练格式和推理格式要一致
@@ -36,7 +37,7 @@
 | 步骤 | 脚本 | 做什么 | 检查点 |
 |---|---|---|---|
 | 0 | `00_env.sh` | 拉 MedicalGPT 最新代码、建 Python 3.11 环境、装 bitsandbytes 和 Gated DeltaNet 的 CUDA 内核、下载 Qwen3.5-9B | 打印出 transformers ≥ 5.6、trl ≥ 0.29 |
-| 1 | `01_data.sh` | OpenAI 格式 → MedicalGPT 输入（SFT / DPO / OPD）、跑一致性测试、拷到训练目录 | 测试全部通过；SFT 19,601 / 1,062，DPO 2,765 / 206，OPD 2,000 / 100 |
+| 1 | `01_data.sh` | OpenAI 格式 → MedicalGPT 输入（SFT / DPO / OPD）、跑一致性测试、拷到训练目录 | 测试全部通过；SFT 19,601 + 800 / 1,062 + 80（后者是复杂问诊调用样本），DPO 2,765 / 206，OPD 2,000 / 100 |
 | 2 | `02_sft.sh` | QLoRA SFT，2 epoch，按 eval_loss 取最优 | 开头日志里解码出的样本以医疗系统提示开头；工具样本里有 `<tool_call>` 和 `<tool_response>`；train / eval loss 不分叉 |
 | 3 | `03_dpo.sh` | 合并 SFT 权重 → 训 DPO adapter（170 步 ≈ 1 epoch）→ 合并成 OPD 的学生模型 | eval 的 rewards/accuracies 不应很快到 1.0、margin 不应冲到 10 左右（v0 的过拟合信号） |
 | 4 | `04_opd.sh` | OPD 在线蒸馏：学生 = DPO 后的 9B（4-bit），教师 = Qwen3.5-27B（4-bit，冻结），500 步 | eval 的 JSD 下降；单卡 24GB 放不下，建议 48GB，或 `TEACHER_OFFLOAD=1` |

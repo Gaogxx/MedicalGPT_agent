@@ -237,7 +237,7 @@ def openai_to_medicalgpt_dir(src: Path, out: Path, opd_train: int = 2000, opd_va
         for f in sorted((src / kind).glob("*.jsonl")):
             rows = [openai_row_to_medicalgpt(r) for r in _read(f)]
             stats[f"medicalgpt/{kind}/{f.name}"] = _write(out / kind / f.name, rows)
-            if kind == "sft":
+            if kind == "sft" and f.stem in ("train", "val"):     # train_consult / val_consult 不进 OPD
                 # 只取单轮（system + 一问一答）：MedicalGPT 的 OPD 拼多轮 prompt 时轮间不加 eos，和 SFT 的拼法不同
                 pool = [r for r in rows if r["meta"].get("bucket") in OPD_BUCKETS and len(r["conversations"]) == 3]
                 random.Random(seed).shuffle(pool)

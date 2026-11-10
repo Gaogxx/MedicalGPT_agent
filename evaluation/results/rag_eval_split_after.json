@@ -1,0 +1,128 @@
+{
+ "R0 BM25": {
+  "kb": {
+   "recall@5": 0.2444,
+   "mrr@10": 0.1675,
+   "ndcg@10": 0.1836,
+   "latency_ms_mean": 0.2,
+   "evidence_tokens_top5": 545.2
+  },
+  "qa": {
+   "recall@5": 0.4728,
+   "mrr@10": 0.4341,
+   "ndcg@10": 0.4456,
+   "latency_ms_mean": 1.0,
+   "evidence_tokens_top5": 705.9
+  }
+ },
+ "R1 +KG路由(RRF)": {
+  "kb": {
+   "recall@5": 0.8556,
+   "mrr@10": 0.8889,
+   "ndcg@10": 0.8631,
+   "latency_ms_mean": 0.2,
+   "evidence_tokens_top5": 496.9
+  },
+  "qa": {
+   "recall@5": 0.4627,
+   "mrr@10": 0.3998,
+   "ndcg@10": 0.4198,
+   "latency_ms_mean": 1.0,
+   "evidence_tokens_top5": 688.3
+  }
+ },
+ "R2 +查询改写": {
+  "kb": {
+   "recall@5": 0.9556,
+   "mrr@10": 0.963,
+   "ndcg@10": 0.9495,
+   "latency_ms_mean": 0.3,
+   "evidence_tokens_top5": 434.8
+  },
+  "qa": {
+   "recall@5": 0.4761,
+   "mrr@10": 0.4017,
+   "ndcg@10": 0.4228,
+   "latency_ms_mean": 1.1,
+   "evidence_tokens_top5": 693.7
+  }
+ },
+ "R3 +词法重排(改写前查询,纯重排)": {
+  "kb": {
+   "recall@5": 0.4556,
+   "mrr@10": 0.3812,
+   "ndcg@10": 0.4528,
+   "latency_ms_mean": 2.2,
+   "evidence_tokens_top5": 604.3
+  },
+  "qa": {
+   "recall@5": 0.3862,
+   "mrr@10": 0.374,
+   "ndcg@10": 0.3766,
+   "latency_ms_mean": 3.9,
+   "evidence_tokens_top5": 883.6
+  }
+ },
+ "R4 词法重排修正(扩展查询+融合分)": {
+  "kb": {
+   "recall@5": 0.6333,
+   "mrr@10": 0.4758,
+   "ndcg@10": 0.5695,
+   "latency_ms_mean": 2.1,
+   "evidence_tokens_top5": 560.3
+  },
+  "qa": {
+   "recall@5": 0.3895,
+   "mrr@10": 0.3762,
+   "ndcg@10": 0.3807,
+   "latency_ms_mean": 3.9,
+   "evidence_tokens_top5": 883.7
+  }
+ },
+ "R4b +KG命中置顶": {
+  "kb": {
+   "recall@5": 0.9556,
+   "mrr@10": 0.9778,
+   "ndcg@10": 0.9606,
+   "latency_ms_mean": 2.2,
+   "evidence_tokens_top5": 530.8
+  },
+  "qa": {
+   "recall@5": 0.3795,
+   "mrr@10": 0.3477,
+   "ndcg@10": 0.3598,
+   "latency_ms_mean": 3.8,
+   "evidence_tokens_top5": 861.6
+  }
+ },
+ "R7 +抽取式压缩(600 token)": {
+  "kb": {
+   "recall@5": 0.9556,
+   "mrr@10": 0.9778,
+   "ndcg@10": 0.9606,
+   "latency_ms_mean": 3.9,
+   "evidence_tokens_top5": 354.7,
+   "gold_kept_after_compress": 0.9773
+  },
+  "qa": {
+   "recall@5": 0.3795,
+   "mrr@10": 0.3477,
+   "ndcg@10": 0.3598,
+   "latency_ms_mean": 6.3,
+   "evidence_tokens_top5": 415.7,
+   "gold_kept_after_compress": 1.0
+  }
+ },
+ "cache": {
+  "queries": 200,
+  "hit_rate": 0.5,
+  "stats": {
+   "exact_hit": 100,
+   "semantic_hit": 0,
+   "miss": 100,
+   "redis_errors": 0
+  },
+  "latency_ms_hit": 0.01,
+  "latency_ms_miss": 6.4
+ }
+}

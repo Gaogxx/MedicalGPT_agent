@@ -7,8 +7,8 @@
       │                └ 最终回答 → 静默失败校验（必要时升级强模型重答）→ 输出安全关
       └── 工具 → dsh-mcp-client → medagent MCP Server（tools / resources）
 
-复杂问诊：多意图问题由规则触发、或模型调用内部工具 complex_consult 时，在本进程内运行 Python 编排器（medagent/consult.py），
-DSH 只收到最终回答。
+复杂问诊：路由器照常选档后，网关给 local / strong 模型多提供一个内部工具 complex_consult；模型调用它时，
+在本进程内运行 Python 编排器（medagent/consult.py），DSH 只收到最终回答。
 
 为什么这样接：DSH 只认“一个 OpenAI 兼容的模型端点”，路由、容错、校验放在端点后面对 DSH 完全透明，
 不需要改 DSH 源码（RouteLLM 官方也是以 OpenAI 兼容服务的形式提供路由）。
@@ -33,7 +33,7 @@ from .router.policy import SafetyFirstRouter, TieredRouter
 from .safety import EMERGENCY_BANNER, assess, guard_output
 from .types import AgentError, LLMResponse
 from .verify.attribution import attribute
-from .verify.detectors import detect, multi_intent
+from .verify.detectors import detect
 from .verify.jev import JevClient, JevVerifier
 
 GUARD_FIXABLE = {"emergency_missing", "prescription_in_high_risk"}
@@ -128,11 +128,27 @@ class RoutingGateway:
             meta["repairs"].append(f"consult_{r.get('status')}")
             return None
         self.stats["consult"] += 1
-        meta.update(tier="orchestrator", reason=reason, served_tier="orchestrator", model="medagent-consult",
+        # tier 保留路由器选的档（是哪个模型决定调用的），served_tier 标明实际由编排器作答
+        meta.update(reason=reason, served_tier="orchestrator", model="medagent-consult",
                     consult={k: r.get(k) for k in ("run_id", "sub_questions", "repairs", "resumed", "replayed")})
         self._audit(question, meta)
         # 编排器已经校验 / 修复过回答，这里只过输出安全关
         return self._response(body, guard_output(r["answer"], a), [], meta), meta
+
+    async def _maybe_consult(self, body, resp, query, history, a, meta, tier, msgs, raw_tools, events, kw):
+        """模型的回复里有 complex_consult 调用：网关拦下自己执行，不转给 DSH。
+        执行失败时用不带该工具的清单让同一档模型重答一次。返回 (最终响应或 None, 模型响应)。"""
+        from .consult import TOOL_NAME
+        call = next((c for c in resp.tool_calls if c.name == TOOL_NAME), None)
+        if call is None:
+            return None, resp
+        q = str(call.arguments.get("question") or query)
+        out = await self._run_consult(body, q, str(call.arguments.get("history") or history), a, meta,
+                                      f"consult:model_call:{tier}")
+        if out is not None:
+            return out, resp
+        retry = await self.pool.generate(tier, msgs, raw_tools if tier != "small" else None, events=events, **kw)
+        return None, retry
 
     async def complete(self, body: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         self.stats["requests"] += 1
@@ -147,22 +163,17 @@ class RoutingGateway:
         meta: dict[str, Any] = {"tier": decision.tier, "reason": decision.reason, "fastpath": decision.fastpath and first,
                                 "repairs": []}
         tier = decision.tier
+        # 复杂问诊不再按规则直接触发：多意图问题和其它问题一样先由路由器选档（small / local / strong），
+        # 再由被选中的模型决定要不要调用内部工具 complex_consult。小模型档不带工具，门控也不会把多意图问题分给它。
         consult_ok = self.consult is not None and not (a.level == "emergency" or a.crisis)
-        if consult_ok and first and multi_intent(query):
-            # 规则触发：明显的多意图问题，直接在网关里运行编排器（拆子问题、隔离 worker、逐步检查点）
-            out = await self._run_consult(body, query, history, a, meta, "consult:multi_intent")
-            if out is not None:
-                return out
-            consult_ok = False          # 编排器没跑成：本请求退回普通路径，也不再把内部工具交给模型
         if tier == "small" and not first:
             # 本轮已经进入工具循环（之前升级到了 local 并调用了工具）：不能再回落到不带工具的小模型
             tier = "local"
             meta["tier"], meta["reason"] = "local", decision.reason + "|in_tool_loop"
-        tools_for_tier = None if tier == "small" else raw_tools
-        if consult_ok and tier != "small":
-            # 模型按需调用：工具清单里加一个只有网关知道的 complex_consult，DSH 看不到它
-            from .consult import TOOL_SPEC
-            tools_for_tier = (tools_for_tier or []) + [TOOL_SPEC]
+        from .consult import TOOL_NAME, TOOL_SPEC
+        # 给 local / strong 模型的工具清单 = DSH 的医疗工具 + 只有网关知道的 complex_consult（DSH 看不到它）
+        model_tools = (raw_tools or []) + [TOOL_SPEC] if consult_ok else raw_tools
+        tools_for_tier = None if tier == "small" else model_tools
         try:
             resp = await self.pool.generate(tier, msgs, tools_for_tier, events=events, **kw)
         except AgentError as err:
@@ -170,16 +181,9 @@ class RoutingGateway:
             meta.update(error=err.to_dict(), attribution=self.verifier.attribute(events))
             from .templates import kb_fallback_answer
             return self._response(body, guard_output(kb_fallback_answer(query, a, history), a), [], meta), meta
-        from .consult import TOOL_NAME
-        consult_call = next((c for c in resp.tool_calls if c.name == TOOL_NAME), None)
-        if consult_call is not None:
-            # 模型选择了复杂问诊：网关拦下这个调用自己执行，不转给 DSH
-            q = str(consult_call.arguments.get("question") or query)
-            out = await self._run_consult(body, q, str(consult_call.arguments.get("history") or history), a, meta,
-                                          "consult:model_call")
-            if out is not None:
-                return out
-            resp = await self.pool.generate(tier, msgs, raw_tools if tier != "small" else None, events=events, **kw)
+        out, resp = await self._maybe_consult(body, resp, query, history, a, meta, tier, msgs, raw_tools, events, kw)
+        if out is not None:
+            return out
         if not resp.tool_calls:
             findings = detect(resp.content, query=query, assessment=a, observations=obs or None, history=history,
                               finish_reason=resp.finish_reason)
@@ -193,7 +197,11 @@ class RoutingGateway:
                 self.stats["regenerated"] += 1
                 meta["repairs"].append("escalate_local:" + verdict.reason)
                 try:
-                    resp, tier = await self.pool.generate("local", msgs, raw_tools, events=events, **kw), "local"
+                    resp, tier = await self.pool.generate("local", msgs, model_tools, events=events, **kw), "local"
+                    out, resp = await self._maybe_consult(body, resp, query, history, a, meta, tier, msgs, raw_tools,
+                                                          events, kw)
+                    if out is not None:
+                        return out
                     findings = detect(resp.content, query=query, assessment=a, observations=obs or None, history=history,
                                       finish_reason=resp.finish_reason) if not resp.tool_calls else []
                     verdict = await asyncio.to_thread(self.verifier.verify, query, resp.content,
@@ -206,8 +214,12 @@ class RoutingGateway:
                 self.stats["regenerated"] += 1
                 meta["repairs"].append("regenerate_strong:" + verdict.reason)
                 try:
-                    resp2 = await self.pool.generate("strong", msgs, raw_tools, events=events, allow_cross_tier=False, **kw)
+                    resp2 = await self.pool.generate("strong", msgs, model_tools, events=events, allow_cross_tier=False, **kw)
                     resp, tier = resp2, "strong"
+                    out, resp = await self._maybe_consult(body, resp, query, history, a, meta, tier, msgs, raw_tools,
+                                                          events, kw)
+                    if out is not None:
+                        return out
                 except AgentError as err:
                     meta["repairs"].append(f"strong_unavailable:{err.kind.value}")
         if resp.finish_reason == "tool_calls_recovered":
