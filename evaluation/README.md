@@ -50,7 +50,8 @@ python evaluation/run_triage_learned.py
 python evaluation/run_rag_eval.py --dense --cross-encoder --tag it3_full
 python evaluation/run_router_eval.py --tag it1
 python evaluation/run_verifier_eval.py
-python evaluation/run_discriminator_eval.py --url http://127.0.0.1:8002/v1   # 开源判别模型：校准 + dev 80 外部测试
+python evaluation/run_judge_bakeoff.py      # 6 个开源判别模型零样本选型（需单独装 laya / lettucedetect 的环境）
+python evaluation/run_discriminator_eval.py --url http://127.0.0.1:8002   # 微调后的 Laya：定阈值 + dev 80 外部测试
 python evaluation/run_live_eval.py --set all --base-url http://127.0.0.1:8000/v1 --model medical-agent
 python evaluation/run_chaos_eval.py it2
 python training/scripts/data_pipeline/audit_data.py --out evaluation/results/data_audit_v0.json

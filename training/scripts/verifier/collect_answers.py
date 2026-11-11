@@ -29,7 +29,7 @@ OUT_DIR = ROOT / "training" / "data" / "verifier"
 
 
 async def main() -> None:
-    from label_router_set import add_judge_args, judge_pool, judge_strong
+    from label_router_set import add_judge_args, judge_pool, judge_strong_typed
     from run_live_eval import LocalOnly
 
     from medagent.agent import GUARD_FIXABLE, MedicalAgent
@@ -98,14 +98,14 @@ async def main() -> None:
                 if state is None:          # 急症快路径等没有经过校验节点的，判别模型线上也看不到
                     return
                 rule_block = state.pop("_rule_block")
-                level, reason = "skipped", ""
+                level, reason, ftype = "skipped", "", "unknown"
                 if args.judge == "strong":
                     try:
-                        level, reason = await judge_strong(jpool, r["query"], r["reference"], state["answer"])
+                        level, reason, ftype = await judge_strong_typed(jpool, r["query"], r["reference"], state["answer"])
                     except Exception as exc:  # noqa: BLE001
                         level, reason = "judge_error", str(exc)[:200]
                 rec = {"id": r["id"], "split": r["split"], "source": r["source"], "model": args.tag, "state": state,
-                       "rule_block": rule_block, "judge": args.judge, "level": level, "reason": reason,
+                       "rule_block": rule_block, "judge": args.judge, "level": level, "failure_type": ftype, "reason": reason,
                        "seconds": round(time.perf_counter() - t0, 2)}
                 async with lock:
                     with open(out, "a", encoding="utf-8") as f:
