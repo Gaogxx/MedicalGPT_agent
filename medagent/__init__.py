@@ -6,7 +6,7 @@
   mcp_client   MCP 客户端（工具发现 / 调用，经容错层）
   rag/         查询改写 → 多路召回 → 混合检索(RRF) → 重排 → 压缩 → 缓存
   resilience/  错误归因、分类重试、Redis 熔断、幂等、Saga 补偿、断点续跑、乐观并发
-  verify/      结果校验（规则 + 轻量判别模型 / Jev 类型化判别）拦截静默失败
+  verify/      结果校验（规则 + 本地开源判别模型的类型化判别）拦截静默失败
   context      上下文压缩（临床关键事实槽位不压缩）
   agent        Router–Worker 编排（参考 DeepSeek Super-agent）
 """

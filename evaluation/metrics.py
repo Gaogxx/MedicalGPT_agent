@@ -53,6 +53,8 @@ def must_cover_ok(ans: str, patterns: list[str]) -> bool:
 def drug_fact_recall(ans: str, drug: str, field: str) -> float:
     kb = load_kb()
     text = kb.drugs[drug][field]
+    if isinstance(text, list):          # interactions 是药名列表
+        text = "、".join(map(str, text))
     terms = [t.strip() for t in FIELD_SPLIT.split(text) if len(t.strip()) >= 2]
     terms = [re.sub(r"^(如|者|对本品|成人|一次|一日|用于|缓解|严重)", "", t) for t in terms]
     terms = [t for t in terms if len(t) >= 2]

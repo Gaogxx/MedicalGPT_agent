@@ -116,7 +116,7 @@ def main() -> None:
         "cascade(rules→classifier)": prf(list(y), list(p_cas)),
         "missed_by_cascade": [real[i]["id"] + ":" + real[i]["label"] for i in range(len(y)) if y[i] and not p_cas[i]],
         "false_alarms_cascade": [real[i]["id"] for i in range(len(y)) if not y[i] and p_cas[i]],
-        "note": "Jev / LLMJudge 升级层未启用（需 API）；cascade 中不确定带样本按分类器判定。",
+        "note": "LLMJudge 升级层未启用；cascade 中不确定带样本按分类器判定。开源判别模型的评测见 run_discriminator_eval.py。",
     }
     (ROOT / "evaluation" / "results" / "verifier_eval_it1.json").write_text(json.dumps(res, ensure_ascii=False, indent=1),
                                                                          encoding="utf-8")

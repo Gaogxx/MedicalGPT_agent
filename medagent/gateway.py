@@ -34,7 +34,7 @@ from .safety import EMERGENCY_BANNER, assess, guard_output
 from .types import AgentError, LLMResponse
 from .verify.attribution import attribute
 from .verify.detectors import detect
-from .verify.jev import JevClient, JevVerifier
+from .verify.typed import TypedVerifier, default_verifier
 
 GUARD_FIXABLE = {"emergency_missing", "prescription_in_high_risk"}
 
@@ -90,9 +90,9 @@ class NameMap:
 
 class RoutingGateway:
     def __init__(self, pool: Any, router: SafetyFirstRouter, audit_path: str | None = None,
-                 verifier: JevVerifier | None = None) -> None:
+                 verifier: TypedVerifier | None = None) -> None:
         self.pool, self.router = pool, router
-        self.verifier = verifier or JevVerifier(JevClient())   # JEV_BASE_URL 未配置时只用规则
+        self.verifier = verifier or default_verifier()   # MEDAGENT_VERIFIER_URL 未配置时只用规则
         self.audit_path = audit_path
         self.stats = {"requests": 0, "strong": 0, "local": 0, "regenerated": 0, "leak_fixed": 0, "fallback": 0,
                       "consult": 0}
@@ -187,7 +187,7 @@ class RoutingGateway:
                 except AgentError as err:
                     meta["repairs"].append(f"local_unavailable:{err.kind.value}")
             if verdict.blocked and tier != "strong" and not resp.tool_calls:
-                # 回答被拦截（规则或 Jev）：同一请求升级到强模型重答一次（强模型也可以选择先调工具）
+                # 回答被拦截（规则或判别模型）：同一请求升级到强模型重答一次（强模型也可以选择先调工具）
                 self.stats["regenerated"] += 1
                 meta["repairs"].append("regenerate_strong:" + verdict.reason)
                 try:

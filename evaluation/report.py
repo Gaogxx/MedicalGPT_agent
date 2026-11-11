@@ -189,7 +189,7 @@ def main() -> None:
                 f"| 确定性规则 | {ve['rules']['precision']:.2f} | {ve['rules']['recall']:.2f} | {ve['rules']['f1']:.2f} |",
                 f"| 轻量分类器（合成故障训练，AUROC {ve['local_classifier@0.5']['auroc']:.2f}） | {ve['local_classifier@0.5']['precision']:.2f} | {ve['local_classifier@0.5']['recall']:.2f} | {ve['local_classifier@0.5']['f1']:.2f} |",
                 f"| 级联（规则→分类器） | {ve['cascade(rules→classifier)']['precision']:.2f} | {ve['cascade(rules→classifier)']['recall']:.2f} | {ve['cascade(rules→classifier)']['f1']:.2f} |",
-                "", "结论（负结果）：用合成故障训练的分类器迁移不到真实失败，默认关闭，仅保留规则阻断；需要线上真实失败日志来训练判别模型或接入 Jev。", ""]
+                "", "结论（负结果）：用合成故障训练的分类器迁移不到真实失败，默认关闭，仅保留规则阻断；改用真实模型回答 + 裁判标签训练的开源判别模型（run_discriminator_eval.py）。", ""]
 
     for tag in ("it1", "it2", "it3"):
         ch = j(f"chaos_eval_{tag}.json")

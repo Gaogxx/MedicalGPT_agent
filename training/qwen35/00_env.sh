@@ -1,5 +1,5 @@
 #!/bin/bash
-# 第 0 步：环境（AutoDL 单卡 24GB，CUDA 12.x）。MedicalGPT 用最新 main（v2.7.0 之后，已适配 Qwen3.5 / Qwen3.6）。
+# 第 0 步：环境（AutoDL 单卡，推荐 80GB；24GB 也能跑 SFT / DPO，见各脚本的 QLORA 开关；CUDA 12.x）。MedicalGPT 用最新 main（v2.7.0 之后，已适配 Qwen3.5 / Qwen3.6）。
 set -e
 export HF_ENDPOINT=${HF_ENDPOINT:-https://hf-mirror.com}
 WORK=${WORK:-/root/autodl-tmp}
@@ -15,3 +15,13 @@ pip install flash-linear-attention causal-conv1d || echo "快路径内核安装�
 python -c "import transformers, trl, peft; print(transformers.__version__, trl.__version__, peft.__version__)"
 # 基座：Qwen3.5 没有 7B，最接近的是 9B（95 亿参数）；显存更紧可换 Qwen3.5-4B
 huggingface-cli download Qwen/Qwen3.5-9B --local-dir $WORK/models/Qwen3.5-9B
+# Qwen3.5-2B：判别模型的基座（training/verifier/），也是线上小模型档
+huggingface-cli download Qwen/Qwen3.5-2B --local-dir $WORK/models/Qwen3.5-2B
+# 部署与评测用单独的环境 serve：vLLM 会固定自己的 torch / transformers 版本，和训练环境装在一起容易冲突
+REPO=${REPO:-$WORK/MedicalGPT_agent}
+conda create -n serve python=3.11 -y || true
+conda activate serve
+pip install "vllm>=0.17"
+pip install -e "$REPO[dev]" || pip install -e "$REPO"   # 本项目（网关 / 编排器 / 评测脚本）
+# 之后：训练（02_sft / 03_dpo / 04_opd / 05_merge、verifier/03_sft）在 medgpt35 环境；
+#       部署与评测（06_serve / 07_eval / 08_router、verifier/01 02 04 05）在 serve 环境

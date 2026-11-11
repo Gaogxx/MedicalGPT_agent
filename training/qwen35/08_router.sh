@@ -3,8 +3,10 @@
 #   数据：evaluation/datasets/router_set.jsonl —— 2,000 条真实问诊提问，与训练数据、所有评测集都不重叠，
 #         已切好 train 1,432 / val 305 / test 263；dev 80 不参与训练，只做外部测试
 #   裁判：strong 档（百川 → DeepSeek），需要 BAICHUAN_API_KEY 或 DEEPSEEK_API_KEY（写在仓库根目录的 .env 里，或先 export）；
-#         中断后重跑会接着标
+#         中断后重跑会接着标。省钱时可改 --judge verifier（本地判别模型打等级，看不到参考答案，比百川弱）
+#   校验器：.env 里配了 MEDAGENT_VERIFIER_URL（判别模型 :8002）时，“校验器拦下”这一条也包含判别模型，与线上一致
 set -e
+source /root/miniconda3/etc/profile.d/conda.sh && conda activate serve
 REPO=${REPO:-/root/autodl-tmp/MedicalGPT_agent}
 cd $REPO
 # 1) 本地模型逐题作答 + 校验器 + 裁判 → 标签（2,000 题，并发 8）

@@ -1,23 +1,23 @@
 """类型化判别（typed judge）：输入程序状态 + 问题，输出预定义类型的值 + 置信度，而不是一段文字。
 
 为什么是“类型化”：校验结果要直接驱动控制流（放行 / 重生成 / 升级强模型 / 转人工），
-自由文本还得再解析一次，本身又是一个静默失败点。接口对齐 Jev（TypeSafe AI 的 System-One 判别模型）
-的三种原语：Choice（多选一）、Score（有序等级）、Noul（是/否 + 单一概率）。
+自由文本还得再解析一次，本身又是一个静默失败点。三种原语：Choice（多选一）、Score（有序等级）、Noul（是/否 + 单一概率）。
+线上用的是 typed.TypedVerifier + 本地开源判别模型（discriminator.py）；本文件是离线评测用的级联实验（run_verifier_eval.py）。
 
 级联：
   RuleJudge（确定性检测器，命中 block 即判失败，几乎零误报）
     → LocalClassifierJudge（字符 n-gram TF-IDF + LR，CPU 亚毫秒级；静默失败检测上这类轻量检测器
        往往优于让 LLM 读整段对话——见 docs/verifier.md 引用）
-      → 置信度落在不确定带 [lo, hi] 时才升级到 JevJudge / LLMJudge（贵、慢，只处理少数难例）
+      → 置信度落在不确定带 [lo, hi] 时才升级到 LLMJudge（贵、慢，只处理少数难例）
 注意：置信度不等于正确性。能用确定性检查（工具结果、证据比对）验证的，一律以确定性检查为准。
 """
 from __future__ import annotations
 
 import json
-import os
+
 import re
 from dataclasses import dataclass, field
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 from .detectors import detect
 
@@ -95,55 +95,6 @@ class LocalClassifierJudge:
         raise NotImplementedError("LocalClassifierJudge 只做二分类（是否静默失败）；归因用 RuleJudge")
 
 
-class JevJudge:
-    """Jev（TypeSafe AI）适配器。Jev 目前为早期访问，公开资料只说明了 Choice/Score/Noul 三种原语与带校准置信度的输出，
-    没有公开 HTTP 接口文档——因此请求/响应映射做成可替换的钩子，拿到接入文档后只需改 build_request / parse_response。
-    启用：JEV_BASE_URL + JEV_API_KEY 环境变量。"""
-
-    name = "jev"
-
-    def __init__(self, base_url: str | None = None, api_key: str | None = None, timeout: float = 2.0,
-                 build_request: Callable[..., dict[str, Any]] | None = None,
-                 parse_response: Callable[[dict[str, Any]], tuple[str, float]] | None = None,
-                 client: Any = None) -> None:
-        import httpx
-        self.base_url = (base_url or os.environ.get("JEV_BASE_URL", "")).rstrip("/")
-        self.api_key = api_key or os.environ.get("JEV_API_KEY", "")
-        self.http = client or httpx.Client(timeout=timeout)
-        self.build_request = build_request or self._default_request
-        self.parse_response = parse_response or self._default_response
-
-    @property
-    def enabled(self) -> bool:
-        return bool(self.base_url and self.api_key)
-
-    @staticmethod
-    def _default_request(primitive: str, question: str, state: dict[str, Any], options: list[str] | None) -> dict:
-        body = {"primitive": primitive, "question": question, "state": state_text(state)}
-        if options:
-            body["options"] = options
-        return body
-
-    @staticmethod
-    def _default_response(data: dict[str, Any]) -> tuple[str, float]:
-        return str(data.get("value")), float(data.get("confidence", 0.0))
-
-    def _call(self, primitive: str, question: str, state: dict[str, Any], options: list[str] | None) -> Decision:
-        r = self.http.post(f"{self.base_url}/decide", json=self.build_request(primitive, question, state, options),
-                           headers={"Authorization": f"Bearer {self.api_key}"})
-        r.raise_for_status()
-        label, conf = self.parse_response(r.json())
-        if primitive == "noul":
-            label = "yes" if label.lower() in ("true", "yes", "1") else "no"
-        return Decision(label, conf, self.name)
-
-    def noul(self, statement: str, state: dict[str, Any]) -> Decision:
-        return self._call("noul", statement, state, None)
-
-    def choice(self, question: str, state: dict[str, Any], options: list[str]) -> Decision:
-        return self._call("choice", question, state, options)
-
-
 class LLMJudge:
     """小 LLM 判别（如本地 Qwen3-1.7B / 云端便宜模型），强制 JSON 输出。provider 需实现 complete_json(prompt)->dict。"""
 
@@ -171,7 +122,7 @@ class LLMJudge:
 class CascadeJudge:
     rules: RuleJudge = field(default_factory=RuleJudge)
     classifier: LocalClassifierJudge | None = None
-    escalate_to: Any = None              # JevJudge / LLMJudge
+    escalate_to: Any = None              # LLMJudge
     uncertain_band: tuple[float, float] = (0.35, 0.65)
     stats: dict[str, int] = field(default_factory=lambda: {"rules": 0, "local_clf": 0, "escalated": 0})
 

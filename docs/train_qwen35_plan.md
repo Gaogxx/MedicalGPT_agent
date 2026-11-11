@@ -1,6 +1,15 @@
 # 本地模型换 Qwen3.5 基座：重训方案（MedicalGPT 最新版）
 
-脚本在 [`training/qwen35/`](../training/qwen35/)，按编号 00 → 08 顺序执行。
+脚本在 [`training/qwen35/`](../training/qwen35/) 和 [`training/verifier/`](../training/verifier/)。整体顺序：
+
+1. `qwen35/00_env.sh`：环境（训练用 `medgpt35`，部署 / 评测用 `serve`）与模型下载；
+2. `verifier/01~05`：**先训开源判别模型**（结果校验用，替代 Jev，见 [verifier_model.md](verifier_model.md)）；
+3. `qwen35/01~07`：9B 的 SFT → DPO → OPD → 合并 → 部署 → 评测；
+4. `qwen35/08_router.sh`：用新模型重训路由器（校验器里已包含判别模型）。
+
+**显卡**：推荐单张 80GB（A800 / A100 80GB）：SFT / DPO 可设 `QLORA=0` 用 bf16 LoRA，OPD 的 27B 教师（4-bit）+ 9B 学生放得下，
+判别模型采集回答时两个基座模型也能同时部署。48GB 能跑完但 OPD 较紧；24GB 只适合 SFT / DPO（QLoRA），OPD 要 `TEACHER_OFFLOAD=1`，很慢。
+数据盘约 200GB（9B / 2B / 27B 原始权重、三次合并的权重、本地全文索引）。
 
 ## 1. 选型
 
@@ -9,7 +18,7 @@
 | 基座 | **Qwen/Qwen3.5-9B**（95 亿参数，2026-02-27 发布） | Qwen3.5 没有 7B（稠密款只有 0.8B / 2B / 4B / 9B / 27B），9B 是最接近原 7B 的一档；Qwen3.6 目前只有 27B 和 35B-A3B，单卡 24GB 训不动 |
 | 备选 | Qwen/Qwen3.5-4B | 显存或推理延迟更紧时用；未微调的 Qwen3.5-2B 在 80 条真实问题上已达到 81.3% 自动通过率 |
 | 训练框架 | MedicalGPT main（v2.7.0 之后，2026-09-15 提交 ef9985a） | v2.5 起全流程适配 Qwen3.5，v2.6 支持工具调用 SFT / DPO，v2.7 加了 OPD；依赖 transformers ≥ 5.6、trl ≥ 0.29、peft ≥ 0.19.1 |
-| 训练方式 | QLoRA（4-bit），LoRA rank 16 | 9B 的 bf16 权重约 19GB，单卡 24GB 放不下 LoRA 训练的激活；48GB 卡可改 bf16 LoRA |
+| 训练方式 | LoRA rank 16；`QLORA=1`（默认，4-bit）或 `QLORA=0`（bf16） | 9B 的 bf16 权重约 19GB，单卡 24GB 放不下 bf16 LoRA 训练的激活，只能 QLoRA；48GB / 80GB 卡用 bf16 LoRA |
 | 推理 | vLLM ≥ 0.17 + 本仓库对话模板 + hermes 解析器 | 见第 2 节 |
 | 数据格式 | **OpenAI 格式为准**（`training/data/openai_v3/`） | messages + tools，与线上请求同构；MedicalGPT 的输入由它自动生成 |
 | 数据量 | SFT 20,663 条 + 复杂问诊调用 880 条 / DPO 2,971 对 / OPD 2,100 条 | 最长样本 1,529 token，`model_max_length` 取 2048 |
@@ -43,7 +52,7 @@
 | 4 | `04_opd.sh` | OPD 在线蒸馏：学生 = DPO 后的 9B（4-bit），教师 = Qwen3.5-27B（4-bit，冻结），500 步 | eval 的 JSD 下降；单卡 24GB 放不下，建议 48GB，或 `TEACHER_OFFLOAD=1` |
 | 5 | `05_merge.sh` | 合并 OPD adapter 得到最终权重（`SKIP_OPD=1` 时直接用 DPO 版） | 输出目录里保留 Qwen3.5 原始 config |
 | 6 | `06_serve.sh` | vLLM 部署在 :8000，模型名 `medical-agent` | 冒烟请求返回标准 `tool_calls`，正文里没有 `<tool_call>` |
-| 7 | `07_eval.sh` | `evaluation/run_live_eval.py`：80 条 dev 问题走完整编排，与 2026-09 MedicalGPT-7B 同指标对比 | DPO 版与 OPD 版各跑一次；OPD 版的药品事实覆盖、格式干净率不能比 DPO 版低 |
+| 7 | `07_eval.sh` | `evaluation/run_live_eval.py`：dev 80 + 扩充集（共 296 条）走完整编排；dev 80 部分与 2026-09 MedicalGPT-7B 同指标对比 | DPO 版与 OPD 版各跑一次；OPD 版的药品事实覆盖、格式干净率不能比 DPO 版低 |
 | 8 | `08_router.sh` | 用新模型重训 MF 路由器：在 2,000 条独立路由数据集上逐题作答 → 校验器 + 百川裁判打“答砸”标签 → train 训练、val 定阈值、test 与 dev 80 报告 | test 的 AUROC；阈值下总体交给强模型约 40%；网关 `/healthz` 显示加载的是 `mf_router` |
 
 ### OPD 的设计

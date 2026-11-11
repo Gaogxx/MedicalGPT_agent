@@ -3,6 +3,8 @@
 # 关键：--template_name qwen3_5_nothink、不传 --tool_format（数据已预渲染，和 vLLM 模板逐字一致）
 set -e
 WORK=${WORK:-/root/autodl-tmp}; D=$WORK/data_qwen35
+# QLORA=1（默认）：4-bit QLoRA，24GB 卡可跑；48GB / 80GB 卡设 QLORA=0 改 bf16 LoRA（更快，精度更高）
+if [ "${QLORA:-1}" = "1" ]; then QLORA_ARGS="--load_in_4bit True --qlora True"; else QLORA_ARGS=""; fi
 source /root/miniconda3/etc/profile.d/conda.sh && conda activate medgpt35
 cd $WORK/MedicalGPT
 CUDA_VISIBLE_DEVICES=0 python training/supervised_finetuning.py \
@@ -12,7 +14,7 @@ CUDA_VISIBLE_DEVICES=0 python training/supervised_finetuning.py \
     --model_max_length 2048 \
     --per_device_train_batch_size 2 --per_device_eval_batch_size 2 --gradient_accumulation_steps 8 \
     --do_train --do_eval \
-    --use_peft True --load_in_4bit True --qlora True \
+    --use_peft True $QLORA_ARGS \
     --target_modules all --lora_rank 16 --lora_alpha 32 --lora_dropout 0.1 \
     --num_train_epochs 2 --learning_rate 1e-4 --weight_decay 0.01 --warmup_ratio 0.03 \
     --neft_alpha 5 \
