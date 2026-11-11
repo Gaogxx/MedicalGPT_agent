@@ -44,3 +44,4 @@ training/data/export_v3/
 .env
 .env.*
 !.env.example
+training/data/verifier/medicalgpt/

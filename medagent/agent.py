@@ -27,7 +27,7 @@ from .templates import render_fallback
 from .types import AgentError, ErrorKind
 from .verify.attribution import attribute
 from .verify.detectors import detect, extract_leaked_tool_call
-from .verify.jev import JevClient, JevVerifier
+from .verify.typed import TypedVerifier, default_verifier
 from .verify.judge import CascadeJudge
 
 SYSTEM_PROMPT = """你是一名专业、谨慎的医疗健康助手，不能替代执业医师。
@@ -54,14 +54,14 @@ class AgentConfig:
 class MedicalAgent:
     def __init__(self, pool: Any, toolbox: Any, router: SafetyFirstRouter, store: CheckpointStore,
                  judge: CascadeJudge | None = None, compressor: ContextCompressor | None = None,
-                 audit: Any = None, cfg: AgentConfig | None = None, verifier: JevVerifier | None = None) -> None:
+                 audit: Any = None, cfg: AgentConfig | None = None, verifier: TypedVerifier | None = None) -> None:
         self.pool, self.toolbox, self.router, self.store = pool, toolbox, router, store
         self.judge = judge or CascadeJudge()
         self.compressor = compressor or ContextCompressor()
         self.audit = audit
         self.cfg = cfg or AgentConfig()
         self.rewriter = QueryRewriter()
-        self.verifier = verifier or JevVerifier(JevClient())
+        self.verifier = verifier or default_verifier()
         self._versions: dict[str, int] = {}
 
     # ------------------------------------------------------------------ 生命周期
@@ -212,8 +212,8 @@ class MedicalAgent:
                 [o for _, o in self._observations(s)], SafetyAssessment(**s["assessment"]))
             s["verdict"] = {"blocked": verdict.blocked, "reason": verdict.reason, "confidence": verdict.confidence,
                             "source": verdict.source, "needs_review": verdict.needs_review}
-            if verdict.blocked:   # Jev 判为静默失败：按 SILENT 处理，走同一条修复路径
-                findings.append({"code": "jev_silent_failure", "kind": "silent", "severity": "block",
+            if verdict.blocked:   # 判别模型判为静默失败：按 SILENT 处理，走同一条修复路径
+                findings.append({"code": "discriminator_silent_failure", "kind": "silent", "severity": "block",
                                  "evidence": f"p={verdict.confidence:.2f}"})
         s["events"].append({"stage": "verify", "source": "verifier", "ok": True, "findings": findings})
         for _ in range(self.cfg.repair_attempts):

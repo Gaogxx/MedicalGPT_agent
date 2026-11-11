@@ -61,7 +61,7 @@ flowchart LR
 - **复杂问诊是第 8 个 MCP 工具**：Python 编排器（Router–Worker、逐步检查点）包成医疗工具 MCP Server 的 `complex_consult`，和另外 7 个工具一样由模型决定调用、由 DSH 执行。多意图问题先由路由器选档，再由被选中的模型决定是否调用；DSH 带回结果后，网关直接把编排器的回答交给用户，不再让模型转述。编排器拆子问题，每个 worker 只拿子问题 + 患者槽位 + 只读工具；中断后同一请求再来即从检查点续跑，已完成的 worker 不重跑。见 [架构 v2 §2](docs/architecture_v2.md)。
 - **知识库分三层**：①精选 KB（`build_kb.py` 合并原仓库两份不一致的手写表，21 症状 / 10 药 / 9 指南，含用法禁忌）②Wikidata 实体层（2,395 疾病 + 2,483 药物，ICD-10 / ATC 编码，CC0）③本地百万级全文索引（Huatuo + shibing624，3,287,539 篇，SQLite FTS5）+ 在线文献（PubMed 4,141 万 / Europe PMC 4,919 万条，实时检索）。所有条目标注来源与“未经审核”。
 - **路由三档**：small（Qwen3.5-2B，只答通过门控的概念/科普题）/ local（微调 MedicalGPT，RouteLLM 意义上的弱模型，默认档）/ strong（Baichuan-M3 → DeepSeek），安全规则优先，小模型答砸逐级升级，见 [架构 v2 §4](docs/architecture_v2.md)。
-- **Jev 校验与归因**：按自定的类型化契约接入（静默失败 Noul / 归因 Choice / 质量 Score），规则优先、Jev 补语义类失败，不可用时只用规则，见 [docs/jev_adapter.md](docs/jev_adapter.md)。
+- **开源判别模型校验**：Qwen3.5-2B + LoRA 微调成类型化判别器（输出质量等级 A~D 及概率，P(静默失败) = P(C)+P(D)），本机 vLLM 部署、不调外部 API；规则优先、判别模型补语义类失败，没部署时只用规则；归因仍用规则。见 [docs/verifier_model.md](docs/verifier_model.md)。
 - **降级模式**：所有模型都不可用时只输出精选 KB 原文 + 标注，不经生成模型；孕期/儿童/老人/过敏等情况不给剂量，急症只给急救提示。
 - **DeepSeek Super-agent**：其开源原型是面向 GitHub 仓库的编码 Agent，bundle 本身不适用医疗问答；借鉴了它的 Router–Worker、唯一写者 + 幂等、中断恢复等设计，对照表见 [架构 v2 §2](docs/architecture_v2.md)。
 
@@ -100,7 +100,8 @@ MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 
 
 | 集合 | 条数 | 内容 | 用途 |
 |---|---|---|---|
-| dev | 80 | 2026-09 线上 DSH 测试的真实回答，逐条人工标注 | 回答层指标、回放评测（同时用于调规则，成绩是样本内的） |
+| dev | 80 | 2026-09 线上 DSH 测试的真实回答，逐条人工标注 | 回答层指标、回放评测（同时用于调规则，成绩是样本内的）；判别模型的外部测试 |
+| dev 扩充集 | 216 | 真实提问（Huatuo 百科 validation / Huatuo26M-Lite）+ 语料里少见类别的手写题；只标与模型无关的字段（急症、高风险、多意图要点、药品事实、应查不到、无历史），由看不到规则代码的独立标注者完成，待医生复核 | 与 dev 80 合起来 296 条做端到端评测（`run_live_eval.py --set all`） |
 | 独立盲测集 C | 80 | 看不到规则的人盲写的问题 | 分诊泛化 |
 | held-out A / B | 55 / 50 | 规则编写后写的问题 | 分诊 |
 | 路由数据集 | 2,000 | Huatuo26M-Lite / shibing624 / Huatuo 百科 validation 的真实提问，train 1,432 / val 305 / test 263 | 路由器训练、阈值校准、路由效果 |
@@ -128,7 +129,7 @@ MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 
 | 2026-11-05 | 分诊 it1→it4 | 关键词规则 → 泛化规则 → 可训练分类器 | 独立盲测集 C：急症召回 39.4%→90.9%（误报：TF-IDF+bge 版 4.3%，运行时默认的纯 TF-IDF 版 10.6%）；高风险召回 29.4%→76.5%（纯 TF-IDF 版） |
 | 2026-11-05 | RAG R0→R7 | 改写、三路召回+RRF、交叉编码器重排、压缩、缓存 | 真实问答集 Recall@5 0.483→0.669；口语 KB 集 0.233→0.989；证据 token −50% |
 | 2026-11-05 | 路由 | 安全规则 + RouteLLM-MF | 40% 强模型调用预算下，本地失败召回 45%→80%（5 折 CV，AUROC 0.78） |
-| 2026-11-05 | 静默失败判别器 | 用合成故障训练轻量分类器，与规则级联 | 负结果：真实失败上 AUROC 0.56，级联 F1 0.41 低于纯规则 0.69 → 默认关闭，只保留规则，语义类失败改由 Jev 适配层补 |
+| 2026-11-05 | 静默失败判别器 | 用合成故障训练轻量分类器，与规则级联 | 负结果：真实失败上 AUROC 0.56，级联 F1 0.41 低于纯规则 0.69 → 默认关闭，只保留规则 |
 | 2026-11-05 | 容错 it1→it2 | 熔断/重试/跨层兜底/校验修复；空回复改为强模型重跑工具流程 | 故障注入下成功率 73.3%→80.0%→90.0%；受控归因 66/66；重复挂号 1→0 |
 | 2026-11-09 | 知识库扩充 | Wikidata 实体层 + 本地全文索引 + 在线文献 | 40 条 → 实体 4,878 + 本地 3,287,539 篇 + 在线 4,141 万 / 4,919 万条 |
 | 2026-11-09 | 百万级检索 | FTS5 去高频词 + 交叉编码器重排 | 134 万篇：p50 45→12ms，Recall@5 0.167→0.293（重排）；扩到 329 万篇后纯词法 Recall@5 降到 0.123，重排后 0.223 |
@@ -139,6 +140,7 @@ MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 
 | 2026-11-10 | 复杂问诊并入网关 | 编排器从单独的 MCP Server 移进路由网关进程，规则触发 + 模型通过内部工具按需调用；出错自动续跑一次，仍失败退回单 agent | 少一个 DSH 插件实例和一个 MCP Server 进程，少一轮工具往返；7 个崩溃点续跑、子问题覆盖 83.3% 不变 |
 | 2026-11-10 | 复杂问诊改由模型决定 | 去掉规则触发：先路由选档，再由被选中的模型决定是否调用；补“何时调用”训练数据（正例 400 / 反例 400）；补全子问题拆分规则（分句、“A和B分别…”） | 8 种多意图问法可拆分的从 3 种增至 8 种；真实问答检索 Recall@5 0.469 → 0.476；4 个评测集里被误拆的单一问题 1 条 |
 | 2026-11-10 | 路由器训练 / 评测分离 | 建 2,000 条独立路由数据集（去重去污染，train / val / test）；标注、训练、无标签校准三个脚本；运行时优先加载独立训练的路由器 | 查出冷启动阈值的问题：dev 80 上交给强模型 49%，真实提问上 82%；在真实提问 val 上重新校准后，test 上 39.9% |
+| 2026-11-11 | 开源判别模型替代 Jev；dev 扩充 | 结果校验改用本机部署的 Qwen3.5-2B 判别模型（一次前向给出质量等级和静默失败概率，阈值部署后在验证集上校准）；训练数据 = 基座模型真实回答 + 百川标签 + 语义故障注入；dev 由独立标注者扩充 216 条（真实提问 87 + 手写 129），合计 296 条 | 管线与格式一致性测试已通过；判别模型尚未在 GPU 上训练，效果待测 |
 | 2026-11-10 | 复杂问诊成为第 8 个 MCP 工具 | `complex_consult` 注册进医疗工具 MCP Server，和其它 7 个工具一样由模型调用、DSH 执行；网关只负责把完成的结果直接交付；编排器的 worker 连不含它的 Server（防递归） | DSH 仍只有一个 `mcp-medical` 实例；会话记录里能看到这一步工具调用；训练数据的工具清单同步为 8 个 |
 
 ## 🔧 关键问题解决方案
@@ -186,7 +188,7 @@ DeepSeek Harness 处于 developer preview（存在 breaking change）。医疗�
 | 推理 | vLLM + 自定义对话模板 + hermes 工具解析器 | 训练 / 推理格式逐字一致 |
 | RAG | BM25(jieba) + bge-small-zh + KG + 本地 FTS5 全文索引（329 万篇）+ openFDA / PubMed / Europe PMC / MedlinePlus，RRF，bge-reranker-base | 抽取式压缩、Redis / 内存缓存 |
 | 容错 | Redis 共享熔断（Lua）、分类重试、幂等、Saga、SQLite 检查点 + CAS | 混沌测试可复现 |
-| 校验 | 规则检测器 + Jev 类型化判别（静默失败 / 归因 / 质量） | 拦截静默失败，失败后升级强模型重答 |
+| 校验 | 规则检测器 + 开源判别模型（Qwen3.5-2B 微调，本机部署） | 拦截静默失败，失败后升级强模型重答 |
 | 主运行时 | DeepSeek Harness (Cordis) | agent 循环、会话、Web / CLI；通过 dsh-mcp-client 接入 MCP |
 | 审计 | JSONL 事件溯源 | 含每次调用的错误归因 |
 
@@ -229,6 +231,7 @@ python -m pytest -q                                  # 单元测试（离线）
 medagent ask --mock "我胸口剧痛冒冷汗"                # 不连模型也能跑通完整编排（离线模式）
 cp .env.example .env    # 在 .env 里填 BAICHUAN_API_KEY 等；.env 只在本机、不会上传，网关 / MCP Server 启动时自动读取
 # 1) 微调 MedicalGPT：vLLM 起在 :8000（Qwen3.5 版见 training/qwen35/06_serve.sh）
+#    判别模型：vLLM 起在 :8002（training/verifier/04_serve.sh），.env 里加 MEDAGENT_VERIFIER_URL=http://127.0.0.1:8002/v1
 # 2) 路由网关（DSH 的模型端点）
 medagent-gateway --port 9000              # 联调可加 --mock，不需要 GPU / API
 # 3) DSH：settings.yaml 放到 ~/.dsh/，MCP Server 由 cordis.yml 里的 dsh-mcp-client 自动以 stdio 拉起
@@ -273,8 +276,11 @@ python -m medagent.rag.scalable download --with-training # 训练数据补充用
 cd training/scripts/data_pipeline && python supplement.py && python augment.py --sft ../../data/sft/toolcall_*.jsonl ../../data/supplement/sft_toolcall_ext.jsonl --raw-qa ../../data/supplement/sft_real_qa.jsonl --out-dir ../../data/augmented_v3 --n-clarify 0 --n-raft 1200 && python mix_v3.py && cd -
 ```
 
-重训（Qwen3.5-9B 基座 + MedicalGPT 最新版）按 [docs/train_qwen35_plan.md](docs/train_qwen35_plan.md) 依次执行 `training/qwen35/00_env.sh` → `08_router.sh`：
-环境 → 数据（OpenAI 格式 → MedicalGPT 输入）与格式一致性检查 → QLoRA SFT → DPO → OPD 蒸馏（教师 Qwen3.5-27B）→ 合并 → vLLM 部署 → 端到端评测 → 用新模型的实测结果重训路由器。
+重训（Qwen3.5-9B 基座 + MedicalGPT 最新版）按 [docs/train_qwen35_plan.md](docs/train_qwen35_plan.md) 的顺序执行：
+1. `training/qwen35/00_env.sh`：环境与模型下载；
+2. `training/verifier/01~05`：**先训判别模型**（基座模型作答 + 百川打等级 → Qwen3.5-2B LoRA → 部署 :8002 → 校准与 dev 80 评测），见 [docs/verifier_model.md](docs/verifier_model.md)；
+3. `training/qwen35/01~07`：数据（OpenAI 格式 → MedicalGPT 输入）与格式一致性检查 → SFT → DPO → OPD 蒸馏（教师 Qwen3.5-27B）→ 合并 → vLLM 部署 → 端到端评测（dev 80 + 扩充集共 296 条）；
+4. `training/qwen35/08_router.sh`：用新模型的实测结果（校验器含判别模型）重训路由器。
 方案文档里记录了准备过程中查出的 11 个问题及处理方式，并留有训练记录表。
 
 ---
@@ -297,7 +303,7 @@ MedicalGPT_agent/
 │   ├── llm/                            # OpenAI 兼容 provider、模型池、工具调用解析、故障注入
 │   ├── rag/                            # 改写 / BM25 / 向量 / KG / 在线源 / RRF / 重排 / 压缩 / 缓存；scalable.py = 本地全文索引（download / setup / build）
 │   ├── resilience/                     # 归因、重试、熔断(Redis)、幂等、Saga、检查点+OCC
-│   ├── verify/                         # 静默失败检测、类型化判别（Jev 适配器）、归因
+│   ├── verify/                         # 静默失败检测、类型化判别（本地开源判别模型）、归因
 │   ├── context.py                      # 上下文压缩（临床槽位常驻）
 │   ├── triage.py                       # 可训练分诊分类器（规则之外的第二阶段）
 │   └── knowledge/                      # kb.json（精选，build_kb.py）+ wikidata_kb.json（实体层）+ ext.py
@@ -305,7 +311,8 @@ MedicalGPT_agent/
 ├── tests/                              # 单元测试（pytest，离线）
 ├── training/
 │   ├── configs/data_mix_v2.yaml        # 数据配比
-│   ├── qwen35/                         # Qwen3.5-9B 重训流水线 00_env → 07_eval（SFT → DPO → OPD）
+│   ├── qwen35/                         # Qwen3.5-9B 重训流水线 00_env → 08_router（SFT → DPO → OPD → 路由）
+│   ├── verifier/                       # 开源判别模型（Qwen3.5-2B LoRA）01_answers → 05_eval
 │   ├── scripts/data_pipeline/          # audit_data / augment（遮挡造数）/ mix_v3 / export_formats（→ OpenAI 格式 → MedicalGPT 输入）
 │   ├── scripts/sft_train_v2.sh · dpo_train_v2.sh · patch_medicalgpt_dpo.py
 │   ├── data/openai_v3/{sft,dpo}        # v3 训练数据，OpenAI 格式（标准格式）
@@ -323,11 +330,11 @@ MedicalGPT_agent/
 
 | 文档 | 说明 |
 |------|------|
-| [架构 v2](docs/architecture_v2.md) | MCP、路由分档决策、Super-agent 借鉴、RAG、容错、Jev |
+| [架构 v2](docs/architecture_v2.md) | MCP、路由分档决策、Super-agent 借鉴、RAG、容错、结果校验 |
 | [数据策略](docs/data_strategy.md) | 参考百川/京东/蚂蚁的公开做法、遮挡增强、配比、防过拟合 |
 | [RAG 知识源](docs/rag_sources.md) | 已接入与建议接入的开源医疗知识库 |
 | [Qwen3.5 重训方案](docs/train_qwen35_plan.md) | 基座选型、训练 / 推理格式对齐、按顺序执行的训练步骤 |
-| [Jev 适配层](docs/jev_adapter.md) | 契约、三种判定、校验与归因流程、阈值 |
+| [开源判别模型](docs/verifier_model.md) | 为什么替代 Jev、输入输出、训练数据、校准、部署 |
 | [评测说明](evaluation/README.md) | 评测集、标注规范、复现命令 |
 | [原架构文档](docs/Medical-GPT-agent_architecture.md) / [DSH 架构](docs/Dsh_architecture.md) | v1 设计 |
 | [部署文档](docs/Medical-GPT_deployment.md) / [DSH 部署日志](docs/dsh_deploy_log.md) | 环境、启动、踩坑 |
