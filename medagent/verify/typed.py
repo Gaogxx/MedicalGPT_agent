@@ -1,10 +1,11 @@
 """类型化判别：用“程序状态 + 一个问题 → 预先定义类型的值 + 置信度”做结果校验与出错归因。
 
-判别后端是本地部署的开源判别模型（medagent/verify/discriminator.py：Qwen3.5-2B + LoRA，vLLM 部署，不调外部 API）。
+判别后端是本地部署的开源判别模型（medagent/verify/discriminator.py：微调后的 Laya 多语言版，laya-serve 部署，不调外部 API）。
 三个判定（DecisionSpec）：
   1. SILENT_FAILURE   是/否     “这个回答是否属于静默失败？”   → 校验：放行 / 升级重答 / 进人工复核
   2. ATTRIBUTION      多选一    “这次失败的根因属于哪一类？”   → 归因（判别模型不支持时只用规则）
   3. ANSWER_QUALITY   有序等级  “回答质量处于哪个等级？”       → 监控与抽检，不参与阻断
+  （判别模型另有 failure_type：判为答砸时给出失败类别，写进校验结论）
 在流水线里的位置（TypedVerifier）：
   规则检测器命中 block → 直接判失败（不问判别模型，确定性优先）
   规则没命中 → 问判别模型 SILENT_FAILURE：p ≥ block_at 视为静默失败（升级强模型重答）；review_at ≤ p < block_at 放行但记录复核
@@ -124,12 +125,23 @@ class TypedVerifier:
         p = d.confidence if d.value else 1 - d.confidence     # 统一成 P(是静默失败)
         if p >= self.block_at:
             self.stats["disc_block"] += 1
-            return Verdict(True, "discriminator:silent_failure", p, "discriminator", quality=q)
+            return Verdict(True, "discriminator:silent_failure" + self._failure_type(state), p, "discriminator", quality=q)
         if p >= self.review_at:
             self.stats["disc_review"] += 1
             return Verdict(False, "discriminator:review", p, "discriminator", needs_review=True, quality=q)
         self.stats["disc_pass"] += 1
         return Verdict(False, "discriminator:pass", p, "discriminator", quality=q)
+
+    def _failure_type(self, state: dict[str, Any]) -> str:
+        """判别模型给出的失败类别（同一次请求里已经算好，不额外调用）；拿不到就不写。"""
+        if "failure_type" not in getattr(self.client, "supports", ()):
+            return ""
+        try:
+            from .discriminator import FAILURE_TYPE
+            d = self.client.decide(FAILURE_TYPE, state)
+            return f":{d.value}" if d.value != "ok" else ""
+        except Exception:  # noqa: BLE001
+            return ""
 
     def attribute(self, events: list[dict[str, Any]]) -> dict[str, Any]:
         rule = attribute(events)

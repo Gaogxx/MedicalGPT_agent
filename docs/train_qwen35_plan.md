@@ -2,8 +2,8 @@
 
 脚本在 [`training/qwen35/`](../training/qwen35/) 和 [`training/verifier/`](../training/verifier/)。整体顺序：
 
-1. `qwen35/00_env.sh`：环境（训练用 `medgpt35`，部署 / 评测用 `serve`）与模型下载；
-2. `verifier/01~05`：**先训开源判别模型**（结果校验用，替代 Jev，见 [verifier_model.md](verifier_model.md)）；
+1. `qwen35/00_env.sh`：环境（训练用 `medgpt35`，部署 / 评测用 `serve`，判别模型用 `laya`）与模型下载；
+2. `verifier/01~05`：**先训开源判别模型**（微调 Laya，结果校验用，替代 Jev，见 [verifier_model.md](verifier_model.md)）；
 3. `qwen35/01~07`：9B 的 SFT → DPO → OPD → 合并 → 部署 → 评测；
 4. `qwen35/08_router.sh`：用新模型重训路由器（校验器里已包含判别模型）。
 
