@@ -101,9 +101,10 @@ def slot_mask(row: dict) -> tuple[dict, dict] | None:
     out["meta"] = {"aug": "slot_mask", "masked": m.group(0), "orig_query": q}
     # 反事实 DPO：rejected 编一个持续时间
     fc_obj = json.loads([c for c in _conv(out) if c["from"] == "function_call"][0]["value"])
-    chosen = f"Action: {fc_obj['name']}\nAction Input: {json.dumps(fc_obj['arguments'], ensure_ascii=False)}"
+    # 写成 {"name", "arguments"} JSON，export_formats 才会渲染成 <tool_call>（原先的 "Action: …" 写法会被当成普通回答）
+    chosen = json.dumps({"name": fc_obj["name"], "arguments": fc_obj["arguments"]}, ensure_ascii=False)
     bad = dict(fc_obj["arguments"], duration="3天")
-    rejected = f"Action: {fc_obj['name']}\nAction Input: {json.dumps(bad, ensure_ascii=False)}"
+    rejected = json.dumps({"name": fc_obj["name"], "arguments": bad}, ensure_ascii=False)
     dpo = {"conversations": [{"from": "human", "value": new_q}], "tools": row.get("tools", ""),
            "chosen": chosen, "rejected": rejected, "meta": {"aug": "slot_mask_dpo"}}
     return out, dpo
@@ -128,8 +129,9 @@ def obs_failure(row: dict, rng: random.Random) -> tuple[dict, dict] | None:
     out["conversations"] = out["conversations"][: idx[0] + 1] + [{"from": "gpt", "value": rng.choice(FAIL_ANSWERS).format(what=what)}]
     out["meta"] = {"aug": "obs_failure", "fail": fail, "orig_query": human(row)}
     original_answer = next((c["value"] for c in reversed(conv) if c["from"] == "gpt"), "")
+    # 上下文里有工具调用，tools 必须带上（线上请求总带工具定义；原先漏了，system 里没有 <tools>）
     dpo = {"conversations": out["conversations"][:-1], "chosen": rng.choice(FAIL_ANSWERS).format(what=what),
-           "rejected": original_answer, "meta": {"aug": "obs_failure_dpo"}}
+           "rejected": original_answer, "tools": row.get("tools", ""), "meta": {"aug": "obs_failure_dpo"}}
     return out, dpo
 
 
@@ -152,7 +154,7 @@ def unknown_entity(row: dict, kb, rng: random.Random) -> tuple[dict, dict] | Non
     info = kb.drugs.get(orig) or next(iter(kb.drugs.values()))
     fabricated = f"{fake}主要用于{info['indications']}，成人一次{rng.choice(['1片', '2粒', '10mg'])}，一日{rng.choice([2, 3])}次。"
     dpo = {"conversations": out["conversations"][:3], "chosen": out["conversations"][3]["value"], "rejected": fabricated,
-           "meta": {"aug": "unknown_entity_dpo"}}
+           "tools": out["tools"], "meta": {"aug": "unknown_entity_dpo"}}
     return out, dpo
 
 

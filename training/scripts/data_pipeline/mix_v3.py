@@ -12,7 +12,7 @@ from pathlib import Path
 import yaml
 from audit_data import is_non_medical
 from common import REPO, human, read_jsonl, row_key, write_jsonl
-from mix_and_split import cap_templates, dedup, group_split, repair_dpo
+from mix_and_split import cap_same_chosen, cap_templates, dedup, fix_legacy_calls, group_split, repair_dpo
 from supplement import Decontam, eval_texts
 
 from medagent.knowledge import load_kb
@@ -97,11 +97,14 @@ def main() -> None:
         raw = len(rows)
         if name == "original":
             rows = [repair_dpo(r) for r in rows]
+        rows = [fix_legacy_calls(r) for r in rows]
         if name == "real":
             rows = balance_length(rows, cfg["dpo"].get("max_chosen_longer_share", 0.6))
         rows = [r for r in rows if not dc.bad(human(r))]
         rows = dedup(rows, cfg["near_dup_threshold"])
         rows = cap_templates(rows, kb, cfg["dpo"]["max_per_template"], rng)
+        if cfg["dpo"].get("max_same_chosen"):
+            rows = cap_same_chosen(rows, cfg["dpo"]["max_same_chosen"], rng)
         rng.shuffle(rows)
         picked = rows[: spec["cap"]]
         for r in picked:

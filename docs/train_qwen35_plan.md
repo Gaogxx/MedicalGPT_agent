@@ -48,9 +48,10 @@
 | 0 | `00_env.sh` | 拉 MedicalGPT 最新代码、建 Python 3.11 环境、装 bitsandbytes 和 Gated DeltaNet 的 CUDA 内核、下载 Qwen3.5-9B | 打印出 transformers ≥ 5.6、trl ≥ 0.29 |
 | 1 | `01_data.sh` | OpenAI 格式 → MedicalGPT 输入（SFT / DPO / OPD）、跑一致性测试、拷到训练目录 | 测试全部通过；SFT 19,601 + 800 / 1,062 + 80（后者是复杂问诊调用样本），DPO 2,765 / 206，OPD 2,000 / 100 |
 | 2 | `02_sft.sh` | QLoRA SFT，2 epoch，按 eval_loss 取最优 | 开头日志里解码出的样本以医疗系统提示开头；工具样本里有 `<tool_call>` 和 `<tool_response>`；train / eval loss 不分叉 |
-| 3 | `03_dpo.sh` | 合并 SFT 权重 → 训 DPO adapter（170 步 ≈ 1 epoch）→ 合并成 OPD 的学生模型 | eval 的 rewards/accuracies 不应很快到 1.0、margin 不应冲到 10 左右（v0 的过拟合信号） |
-| 4 | `04_opd.sh` | OPD 在线蒸馏：学生 = DPO 后的 9B（4-bit），教师 = Qwen3.5-27B（4-bit，冻结），500 步 | eval 的 JSD 下降；单卡 24GB 放不下，建议 48GB，或 `TEACHER_OFFLOAD=1` |
-| 5 | `05_merge.sh` | 合并 OPD adapter 得到最终权重（`SKIP_OPD=1` 时直接用 DPO 版） | 输出目录里保留 Qwen3.5 原始 config |
+| 3 | `03_dpo.sh` | 合并 SFT 权重 → 训 DPO adapter（163 步 ≈ 1 epoch，2,605 对）→ 合并成 OPD 的学生模型 | eval 的 rewards/accuracies 不应很快到 1.0、margin 不应冲到 10 左右（v0 的过拟合信号）；合并后核对逐元素一致 |
+| 4 | `04_opd.sh` | OPD 在线蒸馏（`opd_prefix_teacher.py` 启动）：学生 = DPO 后的 9B（bf16 LoRA），教师 = Qwen3.5-27B（4-bit，冻结，带空思考块和教师专属规则），500 步 | eval 的 JSD 下降；96GB 卡峰值 54GB，24GB 卡设 `QLORA=1 BS=1 GA=4` |
+| 4b | `04b_toolfix.sh` | OPD 之后的工具调用小步 SFT：工具样本只训到 `<tool_call><|im_end|>`，配同样多的 OPD 自生成直接答，200 步 | 调完工具不再写正文、不误调工具，问答指标不退 |
+| 5 | `05_merge.sh` | 合并 OPD adapter → `qwen3.5-9b-medical-opd`，再合并工具修补 adapter → 最终权重（`SKIP_OPD=1` / `SKIP_TOOLFIX=1` 可跳过） | 输出目录里保留 Qwen3.5 原始 config；每次合并逐元素核对 |
 | 6 | `06_serve.sh` | vLLM 部署在 :8000，模型名 `medical-agent` | 冒烟请求返回标准 `tool_calls`，正文里没有 `<tool_call>` |
 | 7 | `07_eval.sh` | `evaluation/run_live_eval.py`：dev 80 + 扩充集（共 296 条）走完整编排；dev 80 部分与 2026-09 MedicalGPT-7B 同指标对比 | DPO 版与 OPD 版各跑一次；OPD 版的药品事实覆盖、格式干净率不能比 DPO 版低 |
 | 8 | `08_router.sh` | 用新模型重训 MF 路由器：在 2,000 条独立路由数据集上逐题作答 → 校验器 + 百川裁判打“答砸”标签 → train 训练、val 定阈值、test 与 dev 80 报告 | test 的 AUROC；阈值下总体交给强模型约 40%；网关 `/healthz` 显示加载的是 `mf_router` |
@@ -60,7 +61,10 @@
 - **为什么放在最后**：SFT 学格式和工具用法，DPO 学“先查后答、不乱开药”的偏好，OPD 用更强的教师在学生自己生成的回答上逐 token 纠正，提升问答质量。
 - **教师**：Qwen3.5-27B（278 亿参数）。MedicalGPT 示例脚本里写的教师 `Qwen/Qwen3.5-7B-Instruct` 在 Hugging Face 上不存在，不能照抄。
 - **只蒸馏问答类样本**（real_qa / safety / clarify / raft，抽 2,000 条）：通用教师没见过本项目的工具约定，蒸馏工具调用轨迹会把 SFT / DPO 学到的调用格式往回拉。
-- **参数**：`opd_lambda 0.5`（一半样本用学生当场生成的回答，一半用参考回答），`opd_beta 0.5`（JSD），`max_new_tokens 384`。
+- **参数**：`opd_lambda 0.8`（80% 样本用学生当场生成的回答，教师直接纠正学生自己的说法），`opd_beta 0.5`（JSD），`max_new_tokens 384`。
+- **教师提示与学生不同**（2026-11-14）：学生模板没有空思考块，27B 会先思考，所以只给教师补 `<think>\n\n</think>\n\n`；
+  另给教师一条学生看不到的规则（本轮无工具、300 字内、不点名药品），学生学到的是教师在这条规则下的说法。
+- **工具调用要补回来**：只蒸馏问答会冲淡“调完工具就停”，OPD 后用 `04b_toolfix.sh` 小步修补。
 - **怎么判断有没有用**：OPD 版和 DPO 版用 `07_eval.sh` 各评一次，问答类指标升、工具类指标不降才采用 OPD 版。
 
 ## 4. 上线切换
@@ -105,7 +109,22 @@
 
 | 日期 | 步骤 | 现象（报错 / 指标） | 原因 | 解决 | 解决后的指标 |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-11-13 | 2 SFT | 32GB vGPU 上 bf16 LoRA 与 4-bit 一样快（0.54 vs 0.56 条/秒） | — | 32GB 及以上用 bf16（`QLORA=0`） | 最优 checkpoint-1250，eval_loss 2.333；第 2 个 epoch 不再下降 |
+| 2026-11-13 | 3 DPO 合并 | 合并后的模型和原版一模一样 | 训练按纯文本结构（`model.layers.*`），`merge_peft_adapter.py` 按多模态结构加载（`model.language_model.layers.*`），PEFT 找不到对应层就静默丢掉 LoRA | `remap_lora_for_vl.py` 先改参数名再合并，合并后抽几层核对 | 增量与 B@A·α/r 的余弦 0.995～1.004 |
+| 2026-11-13 | 3 DPO | bf16 LoRA 时显存直接翻倍 | `dpo_training.py` 把所有可训练参数转 fp32（为 fp16 准备的） | 补丁：只在 fp16 时转（`00_env.sh`） | 峰值 18.6GB |
+| 2026-11-13 | 3 DPO | 加回 `<tools>` 后 325 对被悄悄丢掉 | `dpo_training.py` 按字符数过滤 prompt+回答 ≤ max_source+max_target | `max_source_length` 提到 2048 | 2,605 对全部保留 |
+| 2026-11-13 | 3 DPO v1 / v2 | 验证准确率第一次评估就是 1.0 | 验证集里固定话术（工具失败、查无此药、急症）与训练集同句各约 20 条；262 条仍是旧 ReAct 写法、965 条工具相关样本没带 tools；76 对真实偏好的 chosen 直接推荐具体药物 | `fix_dpo_v3.py`：旧写法转 `<tool_call>`、补回 tools、话术分训练 / 验证两组（`dpo_phrases.py`）且同句限 20 条、验证集与 DPO / SFT 训练集零重叠、去掉推荐药物的偏好对 | v3：train 2,605 / val 234；在同一份新验证集上 v3 准确率 1.000（急症组 margin 中位 0.59），v2 只有 0.906（急症组 0.545） |
+| 2026-11-14 | 3 DPO 合并核对 | 余弦只有 0.42～0.67，核对报失败 | DPO 学习率 5e-6，ΔW 中位只有 W 的千分之一，bf16 存盘后约 84% 元素不变 | 核对改为“与 fp32 算好再转 bf16 的理想合并逐元素一致率 > 0.99” | 一致率 1.0000；合并后 DPO margin 约保留运行时 adapter 的 73%，准确率仍 1.0 |
+| 2026-11-14 | 4 OPD | 27B 教师输出 “Thinking Process…” | `qwen3_5_nothink` 模板没有空思考块，27B 看到裸的 assistant 开头会先思考；GKDTrainer 让教师和学生吃同一串 token，打分整体错位 | `opd_prefix_teacher.py`：只给教师补 `<think>\n\n</think>\n\n`，回答 token 按位置对齐后算 JSD | 补前抽看的教师回答几乎都以思考开头；补后 40 题里思考 0 条 |
+| 2026-11-14 | 4 OPD | 关掉思考后教师写长篇 Markdown、说“我需要先调用工具查询” | 系统提示要求先查工具，OPD 数据却不带工具 | 只给教师加一条规则（`TEACHER_SYSTEM_EXTRA`）：本轮无工具、300 字内、不用标题加粗、不点名药品、最多追问 2 个 | 教师回答简洁，药名片段上教师 logp 比学生低 0.83 / token |
+| 2026-11-14 | 4 OPD | 一启动就报 `trust_remote_code` 参数冲突 | MedicalGPT 的 `ModelArguments` 与 TRL 1.17 的 `SFTConfig` 都定义了它 | 启动器里同名参数合并为一个值 | — |
+| 2026-11-14 | 4 OPD | 每步 80 秒，500 步要 11 小时 | GKDTrainer 开梯度检查点时把生成的 `use_cache` 设成 False，每生成一个 token 都重算整段 | 生成时打开 KV 缓存 + 4 条一批 | 每步约 25 秒 |
+| 2026-11-14 | 4 OPD | 第 ~150 步 OOM（要 10.6GB） | 数据里的参考回答没截断，4 条一起算 JSD | 参考回答也截到 384 token，JSD 逐条算 | 峰值 54GB；从 checkpoint-100 续训到 500 步，eval JSD 0.0675 → 0.0646 |
+| 2026-11-14 | 4 OPD 效果 | — | — | — | 120 条没训练过的问答：原地复读 55 → 0，写到上限没说完 47 → 0，主动点名推荐药物（人工核对）约 10 → 0 |
+| 2026-11-14 | 4 OPD 副作用 | 150 条该调工具的题里 32 条调完还接着写正文（DPO 为 0）；工具名一致 150 → 146 | OPD 只用问答数据，`</tool_call>` 之后该停的习惯被冲淡 | `04b_toolfix.sh`：1,600 条只保留到第一次 `<tool_call>` 的工具样本 + 1,600 条不带工具的直接答（答案由 OPD 自己生成，`toolfix_selfdistill.py`），200 步小 LoRA | 调完还写正文 0/150，工具名 149/150，参数完全一致 132/150（与 DPO 持平），误调工具 0/25；问答组不变 |
+| 2026-11-14 | 4b 工具修补第一版 | 只用工具样本时，没有工具定义的问答题也 120/120 去调工具 | SFT 数据里带 `<tools>` 的样本 100% 调工具、不带的 100% 直接答，修补数据只有一种就把区分冲掉了 | 见上一行（第二版加直接答样本） | — |
+| 2026-11-14 | 6 部署 | vLLM 0.33 起 2B 报 `No available memory for the cache blocks` / `max_num_seqs exceeds available Mamba cache blocks` | 两个服务同时启动互相干扰显存估算；默认 `max_num_seqs=1024` 超过 Qwen3.5 线性注意力层的状态块数 | 先起 2B 再起 9B；`--max-num-seqs 64` | — |
+| 2026-11-14 | 7 评测 | 见 README 迭代时间线 2026-11-14 两行 | | | |
 
 常见情况的处理：
 

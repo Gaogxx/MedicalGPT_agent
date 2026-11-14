@@ -21,6 +21,7 @@ sft:
 
 dpo:
   max_per_template: 20
+  max_same_chosen: 20            # 同一句 chosen 最多 20 条（固定话术类样本，见 mix_and_split.cap_same_chosen）
   max_chosen_longer_share: 0.6   # 真实偏好对 72% 的 chosen 更长，平衡到 ≤60%；训练侧另建议长度归一化损失
   sources:
     real:           {cap: 4000, files: [supplement/dpo_real.jsonl]}                 # shibing624/medical reward 真实偏好对
