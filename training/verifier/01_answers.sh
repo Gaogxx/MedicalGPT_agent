@@ -9,13 +9,16 @@ source /root/miniconda3/etc/profile.d/conda.sh && conda activate serve
 WORK=${WORK:-/root/autodl-tmp}; REPO=${REPO:-$WORK/MedicalGPT_agent}
 cd $REPO && mkdir -p $WORK/outputs
 # 基座模型用 Qwen3.5 自带模板 + qwen3_coder 解析器（XML 写法的工具调用）
+# 2026-11-14 vLLM 0.33 实测：两个服务同时启动会互相干扰显存估算（2B 报 No available memory for the cache blocks），先起 2B 再起 9B；
+#   默认 max_num_seqs=1024 超过 2B 分到的 Mamba 状态块（882），作答并发只有 8，设成 64
 vllm serve $WORK/models/Qwen3.5-2B --served-model-name Qwen/Qwen3.5-2B --port 8011 \
     --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3 \
-    --max-model-len 8192 --gpu-memory-utilization 0.15 --language-model-only > $WORK/outputs/vllm_base2b.log 2>&1 &
+    --max-model-len 8192 --max-num-seqs 64 --gpu-memory-utilization 0.15 --language-model-only > $WORK/outputs/vllm_base2b.log 2>&1 &
 P1=$!
+until curl -sf localhost:8011/v1/models > /dev/null; do sleep 5; done
 vllm serve $WORK/models/Qwen3.5-9B --served-model-name Qwen/Qwen3.5-9B --port 8012 \
     --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3 \
-    --max-model-len 8192 --gpu-memory-utilization 0.45 --language-model-only > $WORK/outputs/vllm_base9b.log 2>&1 &
+    --max-model-len 8192 --max-num-seqs 64 --gpu-memory-utilization 0.45 --language-model-only > $WORK/outputs/vllm_base9b.log 2>&1 &
 P2=$!
 trap "kill $P1 $P2 2>/dev/null" EXIT
 for port in 8011 8012; do until curl -sf localhost:$port/v1/models > /dev/null; do sleep 5; done; done

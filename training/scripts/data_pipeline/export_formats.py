@@ -249,7 +249,7 @@ def openai_to_medicalgpt_dir(src: Path, out: Path, opd_train: int = 2000, opd_va
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sft", default=str(REPO / "training" / "data" / "sft_v3"))
-    ap.add_argument("--dpo", default=str(REPO / "training" / "data" / "reward_v3"))
+    ap.add_argument("--dpo", default=str(REPO / "training" / "data" / "reward_v3_fixed"))   # fix_dpo_v3.py 的产物
     ap.add_argument("--openai", default=str(REPO / "training" / "data" / "openai_v3"), help="OpenAI 格式数据目录（入库）")
     ap.add_argument("--out", default=str(REPO / "training" / "data" / "export_v3" / "medicalgpt_qwen35"))
     ap.add_argument("--from-openai", help="只做 OpenAI → MedicalGPT 输入，读这个目录（含 sft/ dpo/）")

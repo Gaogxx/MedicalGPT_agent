@@ -79,6 +79,41 @@ def repair_dpo(row: dict) -> dict:
     return row
 
 
+# v0 遗留的 ReAct 写法：chosen / rejected 是 "Action: 工具名\nAction Input: {...}" 纯文本。导出时识别不出工具调用，
+# 会原样当成回答训练，而 SFT 与线上都是 <tool_call> 写法（2026-11-13 发现：DPO v3 有 243 对是这种写法）
+LEGACY_CALL = re.compile(r"^\s*Action:\s*(\w+)\s*\nAction Input:\s*(\{.*\})\s*$", re.S)
+
+
+def legacy_call_to_json(value):
+    """旧 ReAct 写法 → {"name", "arguments"} JSON 串（export_formats 会把它渲染成 <tool_call>）；其它值原样返回。"""
+    if not isinstance(value, str):
+        return value
+    m = LEGACY_CALL.match(value)
+    if not m:
+        return value
+    return json.dumps({"name": m.group(1), "arguments": json.loads(m.group(2))}, ensure_ascii=False)
+
+
+def fix_legacy_calls(row: dict) -> dict:
+    ch, rj = legacy_call_to_json(row["chosen"]), legacy_call_to_json(row["rejected"])
+    if ch == row["chosen"] and rj == row["rejected"]:
+        return row
+    return {**row, "chosen": ch, "rejected": rj, "meta": {**row.get("meta", {}), "fixed": "legacy_react_call"}}
+
+
+def cap_same_chosen(rows: list[dict], cap: int, rng: random.Random) -> list[dict]:
+    """同一句 chosen 最多留 cap 条：工具失败 / 查无此药 / 急症的 chosen 是十几句固定话术，
+    不限的话 1,200 多对只有四十来种 chosen，模型在背话术，验证集准确率也会虚高到 1.0（2026-11-13 DPO 体检）。"""
+    groups: dict[str, list[int]] = defaultdict(list)
+    for i, r in enumerate(rows):
+        groups[str(r["chosen"]).strip()].append(i)
+    keep: set[int] = set()
+    for idx in groups.values():
+        rng.shuffle(idx)
+        keep.update(idx[:cap])
+    return [r for i, r in enumerate(rows) if i in keep]
+
+
 def take(rows: list[dict], n: int, rng: random.Random) -> list[dict]:
     rows = list(rows)
     rng.shuffle(rows)

@@ -1,0 +1,20 @@
+{
+ "block_at": 0.88,
+ "review_at": 0.5,
+ "model": "medical-verifier",
+ "val": {
+  "n": 347,
+  "fail_rate": 0.2507,
+  "auroc": 0.8941,
+  "quality_acc": 0.781,
+  "block_at": 0.88,
+  "review_at": 0.5,
+  "at_block": {
+   "precision": 0.8,
+   "recall": 0.7356,
+   "f1": 0.7665
+  },
+  "ms_per_call": 160.7
+ },
+ "calibrated": "2026-11-14"
+}

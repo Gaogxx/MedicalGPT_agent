@@ -44,3 +44,9 @@ training/data/export_v3/
 .env
 .env.*
 !.env.example
+
+# 可由脚本确定性重建的中间数据（不入库）
+# fix_dpo_v3.py 生成；入库的是导出后的 openai_v3/dpo
+training/data/reward_v3_fixed/
+# build_verifier_data.py（seed 42）由 answers_*.jsonl 重建
+training/data/verifier/laya/

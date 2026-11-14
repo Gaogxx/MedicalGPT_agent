@@ -5,7 +5,8 @@ set -e
 REPO=${REPO:-/root/autodl-tmp/MedicalGPT_agent}
 WORK=${WORK:-/root/autodl-tmp}
 cd $REPO
-python training/scripts/data_pipeline/export_formats.py            # openai_v3 → export_v3/medicalgpt_qwen35/{sft,dpo,opd}
+pip install -e ".[dev]" -q                                           # 数据导出要 import medagent（装进 medgpt35 环境）
+python training/scripts/data_pipeline/export_formats.py --from-openai training/data/openai_v3   # 入库的 OpenAI 格式 → export_v3/medicalgpt_qwen35/{sft,dpo,opd}
 # （openai_v3/sft/{train,val}_consult.jsonl 是“何时调用复杂问诊”的正反例，由 consult_samples.py 生成，已入库）
 python -m pytest -q tests/test_chat_template.py                    # 训练文本 == 上线渲染文本，不一致就别开训
 D=$WORK/data_qwen35
