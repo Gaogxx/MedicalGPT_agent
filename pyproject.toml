@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "medagent"
 version = "0.2.0"
-description = "Medical-GPT Agent runtime: MCP tools + RouteLLM routing + RAG + resilience layer"
+description = "Medical agent runtime (local model: Medical-GPT): MCP tools + RouteLLM routing + RAG + resilience layer"
 requires-python = ">=3.10"
 dependencies = [
   "mcp>=2.0",          # MCP 官方 Python SDK（2.x：MCPServer / Client）

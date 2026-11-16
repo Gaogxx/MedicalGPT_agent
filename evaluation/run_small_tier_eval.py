@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """小模型档评测：用真实的 Qwen3.5-2B（非思考模式、不给工具——与线上 small 档条件一致）回答 80 条 dev 问题，
-与 2026-09 线上微调 MedicalGPT 的回答用同一套指标对比，并检查 TieredRouter 的门控是否只把它“答得住”的题分给它。
+与 2026-09 线上的 Medical-GPT 旧版 的回答用同一套指标对比，并检查 TieredRouter 的门控是否只把它“答得住”的题分给它。
 
 输出：evaluation/results/small_tier_eval.json（含全部回答原文，供人工复核）
 """

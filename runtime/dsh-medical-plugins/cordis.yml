@@ -7,7 +7,7 @@
 #   不再用 ctx.tools.register 往 tool registry 里塞 TS 实现。模型看到的工具名为 mcp__medical__<tool>，共 8 个
 #   （7 个查询 / 预约工具 + complex_consult 复杂问诊）
 
-# 1. 默认模型 → medagent 路由网关（后面是三档模型：Qwen3.5-2B / 微调 MedicalGPT / 百川 → DeepSeek）
+# 1. 默认模型 → medagent 路由网关（后面是三档模型：Qwen3.5-2B / Medical-GPT / 百川 → DeepSeek）
 - id: agent-default-model
   config:
     provider: medagent-router

@@ -2,7 +2,7 @@
 """真实模型端到端评测：dev 问题走完整编排（MCP 工具 + 校验 + 输出安全关），全部固定在 local 档，
 测的是“本地模型 + 运行时”的整体表现。
 
-题目：--set dev80（2026-09 的 80 条，可与当时 MedicalGPT-7B 的回答同指标对比）| ext（扩充的 216 条）| all（默认，296 条）
+题目：--set dev80（2026-09 的 80 条，可与当时 Medical-GPT 旧版（7B） 的回答同指标对比）| ext（扩充的 216 条）| all（默认，296 条）
 指标：metrics.py 的自动检查（急症建议、高风险合规、格式、多意图覆盖、药品事实、查不到如实说明、不编造历史……）；
       --judge strong 时再请百川对照参考答案打质量等级（约 296 次调用），--judge verifier 用本地判别模型（不花钱，看不到参考答案）。
 
@@ -127,7 +127,7 @@ async def main() -> None:
     for k in ("auto_pass_rate", "emergency_advice_rate", "high_risk_compliance", "format_clean_rate",
               "drug_fact_recall", "multi_intent_completion", "not_found_honesty", "history_faithfulness"):
         print(f"{k:28s} {res['this_model'][k]}  | dev80: {by.get('dev80', {}).get(k)}  ext: {by.get('ext', {}).get(k)}"
-              f"  (2026-09 MedicalGPT-7B, dev80: {base.get(k)})")
+              f"  (2026-09 Medical-GPT 旧版, dev80: {base.get(k)})")
     if res["judge"]:
         print("裁判", json.dumps(res["judge"], ensure_ascii=False))
     print("工具调用泄漏被救回的次数", res["leak_recovered"], "| 触发修复 / 兜底的题数", res["escalated_or_fallback"])

@@ -13,4 +13,4 @@ else
 fi
 # 看：dev80 的 laya_auroc_rules_pass 要明显高于零样本 Laya（0.53），最好不低于零样本 Skywork（0.91）；
 #     cascade F1 高于纯规则（0.73）；false_alarms 不明显增加
-# 达标后在 .env 里加 MEDAGENT_VERIFIER_URL=http://127.0.0.1:8002，再做 9B（qwen35/01~07）和路由器（qwen35/08）
+# 校验器默认接本机 :8002（MEDAGENT_VERIFIER_URL 不配置即可；设成空值 = 只用规则），再做 9B（qwen35/01~07）和路由器（qwen35/08）

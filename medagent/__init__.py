@@ -1,4 +1,4 @@
-"""Medical-GPT Agent runtime.
+"""医疗 Agent 运行时（本地模型为 Medical-GPT）。
 
 分层：
   router/      RouteLLM 路由（本地 MedicalGPT ↔ 云端强医疗模型）+ 安全优先策略

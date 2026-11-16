@@ -253,7 +253,7 @@ def main() -> None:
     st = j("small_tier_eval.json")
     if st:
         out += ["## 11. 小模型档（Qwen3.5-2B 实测，非思考模式、不给工具）", "",
-                "| 子集 | 题数 | Qwen3.5-2B 自动通过率 | 微调 MedicalGPT（2026-09）自动通过率 | Qwen3.5-2B 被校验器拦截率 |", "|---|---|---|---|---|"]
+                "| 子集 | 题数 | Qwen3.5-2B 自动通过率 | Medical-GPT 旧版（2026-09）自动通过率 | Qwen3.5-2B 被校验器拦截率 |", "|---|---|---|---|---|"]
         for k, name in (("routed_small", "门控分给小模型的题"), ("not_routed_small", "其余题"), ("all", "全部 80 题")):
             v = st[k]
             out.append(f"| {name} | {v['n']} | {pct(v['qwen3.5-2b']['auto_pass_rate'])} | {pct(v['medicalgpt_2026_09']['auto_pass_rate'])} | {pct(v['qwen3.5-2b_block_rate'])} |")

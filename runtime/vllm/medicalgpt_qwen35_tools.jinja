@@ -1,4 +1,4 @@
-{#- 微调 MedicalGPT（Qwen3.5 基座）的 vLLM 对话模板：把 OpenAI 格式的请求（messages / tools / tool_calls / tool）
+{#- Medical-GPT（Qwen3.5 基座）的 vLLM 对话模板：把 OpenAI 格式的请求（messages / tools / tool_calls / tool）
     渲染成与训练时逐字相同的文本。训练数据由 training/scripts/data_pipeline/export_formats.py 导出，
     MedicalGPT 用 --template_name qwen3_5_nothink 训练（不传 --tool_format）。
     一致性测试：tests/test_chat_template.py。

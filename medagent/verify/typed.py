@@ -166,7 +166,7 @@ class TypedVerifier:
 
 
 def default_verifier() -> TypedVerifier:
-    """网关 / 编排器默认用的校验器：配置了 MEDAGENT_VERIFIER_URL 就接本地判别模型，否则只用规则。
+    """网关 / 编排器默认用的校验器：默认接本机判别模型（MEDAGENT_VERIFIER_URL，默认 :8002；设成空值只用规则），连不上时退回规则。
     阈值优先取部署后校准出的 medagent/verify/artifacts/discriminator.json。"""
     from .discriminator import DiscriminatorClient, load_calibration
     cal = load_calibration()

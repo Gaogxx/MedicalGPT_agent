@@ -53,7 +53,7 @@
 | 4b | `04b_toolfix.sh` | OPD 之后的工具调用小步 SFT：工具样本只训到 `<tool_call><|im_end|>`，配同样多的 OPD 自生成直接答，200 步 | 调完工具不再写正文、不误调工具，问答指标不退 |
 | 5 | `05_merge.sh` | 合并 OPD adapter → `qwen3.5-9b-medical-opd`，再合并工具修补 adapter → 最终权重（`SKIP_OPD=1` / `SKIP_TOOLFIX=1` 可跳过） | 输出目录里保留 Qwen3.5 原始 config；每次合并逐元素核对 |
 | 6 | `06_serve.sh` | vLLM 部署在 :8000，模型名 `medical-agent` | 冒烟请求返回标准 `tool_calls`，正文里没有 `<tool_call>` |
-| 7 | `07_eval.sh` | `evaluation/run_live_eval.py`：dev 80 + 扩充集（共 296 条）走完整编排；dev 80 部分与 2026-09 MedicalGPT-7B 同指标对比 | DPO 版与 OPD 版各跑一次；OPD 版的药品事实覆盖、格式干净率不能比 DPO 版低 |
+| 7 | `07_eval.sh` | `evaluation/run_live_eval.py`：dev 80 + 扩充集（共 296 条）走完整编排；dev 80 部分与 2026-09 Medical-GPT 旧版（7B） 同指标对比 | DPO 版与 OPD 版各跑一次；OPD 版的药品事实覆盖、格式干净率不能比 DPO 版低 |
 | 8 | `08_router.sh` | 用新模型重训 MF 路由器：在 2,000 条独立路由数据集上逐题作答 → 校验器 + 百川裁判打“答砸”标签 → train 训练、val 定阈值、test 与 dev 80 报告 | test 的 AUROC；阈值下总体交给强模型约 40%；网关 `/healthz` 显示加载的是 `mf_router` |
 
 ### OPD 的设计

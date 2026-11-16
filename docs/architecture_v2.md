@@ -2,13 +2,13 @@
 
 本文回答四个设计问题：能不能用 DeepSeek Super-agent、工具层怎么改 MCP、路由分几档、容错层管哪些事。
 
-## 1. 总览：DSH 是主运行时，微调 MedicalGPT 是本地模型
+## 1. 总览：DSH 是主运行时，Medical-GPT 是本地模型
 
 ```mermaid
 flowchart LR
     U[用户] --> DSH["DeepSeek Harness<br/>agent 循环 · 会话 · 压缩 · Web/CLI"]
     DSH -- "模型请求（OpenAI 兼容）" --> GW["medagent 路由网关 :9000<br/>分诊 → RouteLLM 路由 → 熔断/重试/跨层兜底<br/>泄漏工具调用修正 · 工具名映射<br/>最终回答校验 → 升级重答 · 输出安全关"]
-    GW -- local --> L["微调 MedicalGPT-7B（vLLM :8000）<br/>SFT→DPO→OPD"]
+    GW -- local --> L["Medical-GPT 本地模型（Qwen3.5-9B 微调，vLLM :8000）<br/>SFT→DPO→OPD"]
     GW -- strong --> S["Baichuan-M3 → DeepSeek"]
     DSH -- "dsh-mcp-client（stdio）" --> MCP[("medagent MCP Server<br/>tools 8 · resources · prompts 3 · instructions")]
     MCP --> RAG["RAG 管线"]
@@ -43,7 +43,7 @@ DeepSeek 开源的 [dsh-superagent-prototype](https://github.com/deepseek-ai/dsh
 用户：“先说说布洛芬的副作用，再说说高血压饮食注意什么”
 DSH ──模型请求（带 8 个工具）──▶ 网关：路由器选档（安全规则 → MF → 小模型门控）
                                       多意图问题不会分给小模型（门控排除多意图，小模型档也不带工具）
-    网关 ──▶ 百川 / 微调 MedicalGPT：判断要拆开查 → tool_call: complex_consult{question}
+    网关 ──▶ 百川 / Medical-GPT：判断要拆开查 → tool_call: complex_consult{question}
 DSH ◀── 工具调用（网关原样交回，和其它工具一样）
 DSH ──执行──▶ mcp-medical 实例 ──▶ 医疗工具 MCP Server：complex_consult
       编排器：intake → route → plan（拆 2 个子问题）→ work（w0、w1 并行，各自只拿子问题 + 患者槽位 + 5 个只读工具，
@@ -52,7 +52,7 @@ DSH ──带工具结果再请求──▶ 网关：结果 status=done → 直�
 ```
 
 - **由模型决定调用**：多意图问题和其它问题一样先选档，再由被选中的模型决定。dev 集 6 道多要点题全部被路由到 strong（百川）。
-  微调 MedicalGPT 训练时没见过这个工具，所以补了训练数据（`consult_samples.py`：多意图 → 调用 400 条 / 单一问题 → 调普通工具 400 条，
+  Medical-GPT 训练时没见过这个工具，所以补了训练数据（`consult_samples.py`：多意图 → 调用 400 条 / 单一问题 → 调普通工具 400 条，
   工具清单就是 MCP Server 列出的 8 个）；模型没有调用而漏答子问题时，校验器的 incomplete_multi 会拦下并升级 strong 重答。
 - **演变**：2026-11-09 第一版是单独的 MCP Server（多一个 DSH 插件实例），由网关按规则返回工具调用；2026-11-10 先并入网关进程，
   随后按需求改为现在的做法——作为同一个 MCP Server 的第 8 个工具，DSH 里仍只有一个 `mcp-medical` 实例。
@@ -104,7 +104,7 @@ Server 是能力提供方。
 | 档 | 模型 | 角色 | 进入条件 |
 |---|---|---|---|
 | strong | Baichuan-M3 → DeepSeek（云端） | 强模型 | 急症/危机、高风险意图（开药/诊断/手术），或 RouteLLM-MF 判定本地模型可能答砸（P ≥ 阈值） |
-| local | 微调 MedicalGPT-7B（vLLM） | 弱模型（RouteLLM 意义上的 weak），默认档 + 兜底 | 其余问题；工具调用、药品、症状都在这一档 |
+| local | Medical-GPT 本地模型（Qwen3.5-9B 微调，vLLM） | 弱模型（RouteLLM 意义上的 weak），默认档 + 兜底 | 其余问题；工具调用、药品、症状都在这一档 |
 | small | Qwen3.5-2B（可换 0.8B） | 简单问答 | 只有通过门控的问题：概念/科普题（“什么是 BMI”），不涉及具体个人、不涉及药名与用药决策、单一意图、无历史 |
 
 实现：`medagent/router/policy.py` 的 `TieredRouter`，相当于 RouteLLM 的两个二分类路由器级联——先用 MF 打分决定要不要上 strong，

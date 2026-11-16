@@ -2,7 +2,7 @@
 """“什么时候调用复杂问诊”的训练数据（OpenAI 格式）。
 
 complex_consult 是医疗工具 MCP Server 的第 8 个工具，由模型决定要不要调用。
-微调 MedicalGPT 训练时没见过这个工具，所以补两类样本：
+Medical-GPT 训练时没见过这个工具，所以补两类样本：
   - 正例：一次问了多件事（症状原因 + 用药、用药 + 饮食、两种药分别的注意事项……）→ 调用 complex_consult；
   - 反例：只问一件事 → 照常调用普通工具（来自 v3 的工具调用样本），工具清单里同样有 complex_consult，教模型“别乱用”。
 工具清单与线上一致：直接取 MCP Server 列出的 8 个工具（complex_consult 排在最后）。

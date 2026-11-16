@@ -13,7 +13,8 @@ Laya 是“类型化决策模型”：输入程序状态 + 预先定义的问题
 
 部署：LAYA_PORT=8002 LAYA_EXTRA_MODELS='{"medical-verifier": "<微调后的目录>"}' laya-serve（training/verifier/04_serve.sh）
 接口：POST /v1/systemone {"model", "state", "questions", "max_len"} → {"answers": {qid: {"noul" | "choice", "probabilities"}}}
-配置：MEDAGENT_VERIFIER_URL=http://127.0.0.1:8002（不配置 = 只用规则），MEDAGENT_VERIFIER_MODEL（默认 medical-verifier）
+配置：MEDAGENT_VERIFIER_URL（默认 http://127.0.0.1:8002；设成空值 = 只用规则），MEDAGENT_VERIFIER_MODEL（默认 medical-verifier）。
+没部署 laya-serve 时连接会立即被拒，TypedVerifier 捕获后退回规则，不影响回答。
 """
 from __future__ import annotations
 
@@ -25,6 +26,7 @@ from typing import Any
 from .typed import ANSWER_QUALITY, SILENT_FAILURE, DecisionSpec, TypedDecision
 
 CALIBRATION = Path(__file__).resolve().parent / "artifacts" / "discriminator.json"
+DEFAULT_URL = "http://127.0.0.1:8002"   # 默认接入本机 laya-serve（training/verifier/04_serve.sh，加载 v3）
 MAX_LEN = 2048          # 状态最长 token 数：训练和推理一致（mmBERT 支持到 8192）
 
 FAILURE_TYPES = {
@@ -87,7 +89,7 @@ class DiscriminatorClient:
     def __init__(self, base_url: str | None = None, model: str | None = None, timeout: float = 3.0,
                  client: Any = None) -> None:
         import httpx
-        self.base_url = (base_url if base_url is not None else os.environ.get("MEDAGENT_VERIFIER_URL", "")).rstrip("/")
+        self.base_url = (base_url if base_url is not None else os.environ.get("MEDAGENT_VERIFIER_URL", DEFAULT_URL)).rstrip("/")
         if self.base_url.endswith("/v1"):
             self.base_url = self.base_url[:-3]
         self.model = model or os.environ.get("MEDAGENT_VERIFIER_MODEL", "medical-verifier")

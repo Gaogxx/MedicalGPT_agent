@@ -51,10 +51,19 @@ def test_unavailable_degrades_to_rules():
     assert not verdict.blocked and verdict.source == "rules(discriminator_unavailable)" and v.stats["disc_error"] == 1
 
 
-def test_not_configured_means_rules_only(monkeypatch):
-    monkeypatch.delenv("MEDAGENT_VERIFIER_URL", raising=False)
+def test_empty_url_means_rules_only(monkeypatch):
+    monkeypatch.setenv("MEDAGENT_VERIFIER_URL", "")
     v = TypedVerifier(DiscriminatorClient())
     assert v.verify("布洛芬有什么副作用", "胃肠道不适。", []).source == "rules"
+
+
+def test_default_is_local_laya_and_falls_back_when_absent(monkeypatch):
+    # 2026-11-16 起默认接本机 laya-serve；没部署（这里用一个没人监听的端口模拟）时退回规则，不影响回答
+    monkeypatch.delenv("MEDAGENT_VERIFIER_URL", raising=False)
+    assert DiscriminatorClient().base_url == "http://127.0.0.1:8002"
+    v = TypedVerifier(DiscriminatorClient(base_url="http://127.0.0.1:9"))
+    verdict = v.verify("布洛芬有什么副作用", "胃肠道不适。", [])
+    assert not verdict.blocked and verdict.source == "rules(discriminator_unavailable)"
 
 
 def test_url_with_v1_suffix_is_accepted():

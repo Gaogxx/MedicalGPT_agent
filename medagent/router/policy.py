@@ -1,7 +1,7 @@
 """安全优先的路由策略。
 
 两个路由器：
-  - SafetyFirstRouter：两档（local = 微调 MedicalGPT-7B，strong = 云端医疗大模型）；
+  - SafetyFirstRouter：两档（local = 本地模型 Medical-GPT，strong = 云端医疗大模型）；
   - TieredRouter：三档，在两档基础上加 small（Qwen3.5-2B），只接通过门控的概念/科普题。
     2026-11-05 版本只有两档、小模型只做控制面；2026-11-09 实测 Qwen3.5-2B 在门控题上 10/10 通过后加了 small 档
     （evaluation/results/small_tier_eval.json）。配置里有 small 档模型时 cli/gateway 自动用 TieredRouter。
@@ -90,7 +90,7 @@ def is_simple_question(query: str, history: str = "") -> bool:
 
 
 class TieredRouter(SafetyFirstRouter):
-    """三档：small（简单问答）/ local（微调 MedicalGPT）/ strong（云端医疗大模型）。
+    """三档：small（简单问答）/ local（Medical-GPT）/ strong（云端医疗大模型）。
     相当于 RouteLLM 的两个二分类路由器级联：先用 MF 打分决定要不要上 strong，
     不上 strong 的再用门控决定能不能降到 small。安全规则永远优先。"""
 

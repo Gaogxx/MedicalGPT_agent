@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🏥 Medical-GPT — 医疗大模型 Agent 系统
+# 🏥 医疗大模型 Agent 系统
 
-**基于 MedicalGPT 训练管线 + DeepSeek Harness 可插拔运行时构建的医疗大模型 Agent，支持症状分析、药品查询、临床指南检索等医疗工具调用，内置安全策略与合规审计。**
+**以本地模型 Medical-GPT（Qwen3.5-9B，经 MedicalGPT 训练管线微调）为核心、DeepSeek Harness 为可插拔运行时的医疗大模型 Agent，支持症状分析、药品查询、临床指南检索等医疗工具调用，内置安全策略与合规审计。**
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue?logo=python)](https://python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch)](https://pytorch.org/)
@@ -18,12 +18,12 @@
 
 ## 📖 项目简介
 
-Medical-GPT 是一个面向**医疗健康场景**的大模型 Agent 系统。它把 **MedicalGPT 训练管线**（增量预训练 → SFT 工具调用微调 → DPO 偏好对齐）产出的、具备医疗工具调用能力的模型，接入 **DeepSeek Harness（dsh）** 可插拔运行时，对外提供**症状分析、药品查询、药物相互作用检查、临床指南检索**等医疗工具能力，并内置**医疗安全策略、紧急症状识别、合规审计日志**。
+本项目是一个面向**医疗健康场景**的大模型 Agent 系统。其中 **Medical-GPT 是本地模型**：以 Qwen3.5-9B 为基座，用 **MedicalGPT 训练管线**（SFT 工具调用微调 → DPO 偏好对齐 → OPD 在线蒸馏）训练出具备医疗工具调用能力的模型。系统把它接入 **DeepSeek Harness（dsh）** 可插拔运行时，对外提供**症状分析、药品查询、药物相互作用检查、临床指南检索**等医疗工具能力，并内置**医疗安全策略、紧急症状识别、合规审计日志**。
 
 ### 核心架构理念
 
 - **训练侧（MedicalGPT）**：训练数据统一为 **OpenAI 格式**（messages + tools + tool_calls，与线上请求同构），由 `export_formats.py` 生成 MedicalGPT 的输入；SFT 学工具调用，DPO 对齐"主动调工具、安全准确回答"的偏好，OPD 用 Qwen3.5-27B 教师在线蒸馏提升问答质量。
-- **运行时侧（DeepSeek Harness + medagent）**：DSH 负责 agent 循环、会话与界面；medagent 路由网关在小模型、微调 MedicalGPT、云端医疗大模型三档之间分流，并做熔断、重试、跨层兜底、回答校验和输出安全关；医疗工具与知识资源以 **MCP Server** 形式接入，“复杂问诊”编排器在网关内按需运行；RAG 连接本地 329 万篇全文索引与 PubMed / Europe PMC 等在线文献。
+- **运行时侧（DeepSeek Harness + medagent）**：DSH 负责 agent 循环、会话与界面；medagent 路由网关在小模型、Medical-GPT、云端医疗大模型三档之间分流，并做熔断、重试、跨层兜底、回答校验和输出安全关；医疗工具与知识资源以 **MCP Server** 形式接入，“复杂问诊”编排器在网关内按需运行；RAG 连接本地 329 万篇全文索引与 PubMed / Europe PMC 等在线文献。
 - **安全合规**：高风险操作（诊断/处方）策略拦截，紧急症状自动建议就医/拨打 120，所有轨迹事件溯源审计。
 
 ### 适用场景
@@ -33,7 +33,7 @@ Medical-GPT 是一个面向**医疗健康场景**的大模型 Agent 系统。它
 - **健康科普**：基于临床指南的疾病管理建议（饮食、运动、用药等）
 - **Agent 架构实践**：涵盖 LLM 工具调用训练、可插拔运行时、安全策略、审计溯源等完整链路
 
-**一句话总结**：不只是训练一个医疗模型，更是一套"训练 → 部署 → 安全合规"的医疗 Agent 完整工程实践。
+**一句话总结**：不只是训练一个医疗本地模型（Medical-GPT），更是一套"训练 → 部署 → 安全合规"的医疗 Agent 完整工程实践。
 
 ---
 
@@ -46,7 +46,7 @@ flowchart LR
     end
     U["👤 用户"] --> DSH["DeepSeek Harness（主运行时）<br/>agent 循环 · 会话 · 压缩 · Web/CLI"]
     DSH -- "模型请求（OpenAI 兼容）" --> GW["medagent 路由网关<br/>分诊 → RouteLLM 路由<br/>熔断 · 重试 · 跨层兜底<br/>泄漏修正 · 工具名映射<br/>回答校验 · 安全关"]
-    GW -- local --> L["微调 MedicalGPT-7B（vLLM）"]
+    GW -- local --> L["Medical-GPT 本地模型（Qwen3.5-9B 微调，vLLM）"]
     GW -- strong --> S["Baichuan-M3 → DeepSeek"]
     OPD --> L
     DSH -- "dsh-mcp-client" --> MCP[("medagent MCP Server<br/>8 个工具 · resources · prompts")]
@@ -56,12 +56,12 @@ flowchart LR
     MCP --> KB[("精选 KB + Wikidata 实体层")]
 ```
 
-- **DSH 是主运行时，微调 MedicalGPT 是本地模型**：DSH 的模型请求先进 `medagent` 路由网关（`python -m medagent.gateway`），由网关在微调 MedicalGPT（vLLM）与云端医疗大模型之间路由，并做熔断、重试、泄漏修正、回答校验和安全关；DSH 继续负责 agent 循环、会话和界面。配置见 `runtime/dsh-medical-plugins/settings.yaml` 与 `cordis.yml`。
+- **DSH 是主运行时，Medical-GPT 是本地模型**：DSH 的模型请求先进 `medagent` 路由网关（`python -m medagent.gateway`），由网关在Medical-GPT（vLLM）与云端医疗大模型之间路由，并做熔断、重试、泄漏修正、回答校验和安全关；DSH 继续负责 agent 循环、会话和界面。配置见 `runtime/dsh-medical-plugins/settings.yaml` 与 `cordis.yml`。
 - **工具层改为 MCP**：Python MCP Server 提供 tools（8 个：7 个查询 / 预约工具 + 复杂问诊 `complex_consult`）、resources（知识库条目、目录、来源、知识源状态 `kb://sources`、检索命中文档全文 `kb://doc/{id}`）、prompts（系统提示、追问模板、带证据作答）；DSH 通过官方 `@deepseek-ai/dsh-mcp-client` 接入。调度由宿主（DSH / 编排器）负责，Server 只提供能力。原 `index.ts` 的 `ctx.tools.register` 已移除。
 - **复杂问诊是第 8 个 MCP 工具**：Python 编排器（Router–Worker、逐步检查点）包成医疗工具 MCP Server 的 `complex_consult`，和另外 7 个工具一样由模型决定调用、由 DSH 执行。多意图问题先由路由器选档，再由被选中的模型决定是否调用；DSH 带回结果后，网关直接把编排器的回答交给用户，不再让模型转述。编排器拆子问题，每个 worker 只拿子问题 + 患者槽位 + 只读工具；中断后同一请求再来即从检查点续跑，已完成的 worker 不重跑。见 [架构 v2 §2](docs/architecture_v2.md)。
 - **知识库分三层**：①精选 KB（`build_kb.py` 合并原仓库两份不一致的手写表，21 症状 / 10 药 / 9 指南，含用法禁忌）②Wikidata 实体层（2,395 疾病 + 2,483 药物，ICD-10 / ATC 编码，CC0）③本地百万级全文索引（Huatuo + shibing624，3,287,539 篇，SQLite FTS5）+ 在线文献（PubMed 4,141 万 / Europe PMC 4,919 万条，实时检索）。所有条目标注来源与“未经审核”。
-- **路由三档**：small（Qwen3.5-2B，只答通过门控的概念/科普题）/ local（微调 MedicalGPT，RouteLLM 意义上的弱模型，默认档）/ strong（Baichuan-M3 → DeepSeek），安全规则优先，小模型答砸逐级升级，见 [架构 v2 §4](docs/architecture_v2.md)。
-- **开源判别模型校验**：用本项目数据微调 Laya 多语言版（Jev 的开源对应物，类型化决策模型，3.2 亿参数），本机 laya-serve 部署、不调外部 API；一次请求判断“是否答砸 / 质量等级 / 失败类别”；规则优先、判别模型补语义类失败，没部署时只用规则（2026-11-16 v3：dev 80 上规则→Laya 级联 F1 0.765，高于纯规则 0.727；但对最终 9B 自己的失败帮助很小，默认不接，强模型可用时可开）；调用出错的归因仍用规则。选型时 6 个开源模型在 dev 80 上做了零样本对比。见 [docs/verifier_model.md](docs/verifier_model.md)。
+- **路由三档**：small（Qwen3.5-2B，只答通过门控的概念/科普题）/ local（Medical-GPT，RouteLLM 意义上的弱模型，默认档）/ strong（Baichuan-M3 → DeepSeek），安全规则优先，小模型答砸逐级升级，见 [架构 v2 §4](docs/architecture_v2.md)。
+- **开源判别模型校验**：用本项目数据微调 Laya 多语言版（Jev 的开源对应物，类型化决策模型，3.2 亿参数），本机 laya-serve 部署、不调外部 API；一次请求判断“是否答砸 / 质量等级 / 失败类别”；规则优先、判别模型补语义类失败，默认接入本机 :8002（没部署时自动只用规则）；调用出错的归因仍用规则。选型时 6 个开源模型在 dev 80 上做了零样本对比。见 [docs/verifier_model.md](docs/verifier_model.md)。
 - **降级模式**：所有模型都不可用时只输出精选 KB 原文 + 标注，不经生成模型；孕期/儿童/老人/过敏等情况不给剂量，急症只给急救提示。
 - **DeepSeek Super-agent**：其开源原型是面向 GitHub 仓库的编码 Agent，bundle 本身不适用医疗问答；借鉴了它的 Router–Worker、唯一写者 + 幂等、中断恢复等设计，对照表见 [架构 v2 §2](docs/architecture_v2.md)。
 
@@ -75,7 +75,7 @@ MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 
 ### 亮点二：MCP 工具层 + 三档路由
 
 医疗工具从 DSH 的进程内 tool registry 迁到标准 MCP Server：工具定义只有一份真源，DSH 与 Python 编排器共用；有副作用的工具（预约）在客户端与服务端双层幂等。
-路由是三段级联：①安全规则（急症 / 危机 / 开药诊断 → strong）②RouteLLM 矩阵分解路由器在 local（微调 MedicalGPT-7B）与 strong（Baichuan-M3 / DeepSeek）之间二选一，按调用预算校准阈值 ③判为 local 的题里，通过规则门控的概念 / 科普题交给 small（Qwen3.5-2B）。MF 的训练和评测用不同的数据：独立路由数据集（`evaluation/datasets/router_set.jsonl`，2,000 条真实问诊提问，与训练数据、所有评测集都不重叠）切成 train / val / test，train 训练、val 定阈值、test 报告；dev 80 只做人工标注的外部测试。阈值按“总体 40% 交给强模型”（含安全规则强制的部分）在真实提问上校准。
+路由是三段级联：①安全规则（急症 / 危机 / 开药诊断 → strong）②RouteLLM 矩阵分解路由器在 local（本地模型 Medical-GPT）与 strong（Baichuan-M3 / DeepSeek）之间二选一，按调用预算校准阈值 ③判为 local 的题里，通过规则门控的概念 / 科普题交给 small（Qwen3.5-2B）。MF 的训练和评测用不同的数据：独立路由数据集（`evaluation/datasets/router_set.jsonl`，2,000 条真实问诊提问，与训练数据、所有评测集都不重叠）切成 train / val / test，train 训练、val 定阈值、test 报告；dev 80 只做人工标注的外部测试。阈值按“总体 40% 交给强模型”（含安全规则强制的部分）在真实提问上校准。
 
 ### 亮点三：医疗安全策略 + 合规审计
 
@@ -135,18 +135,16 @@ MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 
 | 2026-11-09 | 百万级检索 | FTS5 去高频词 + 交叉编码器重排 | 134 万篇：p50 45→12ms，Recall@5 0.167→0.293（重排）；扩到 329 万篇后纯词法 Recall@5 降到 0.123，重排后 0.223 |
 | 2026-11-09 | 容错 it3 | 模型全挂时的降级回答改为带防护的精选 KB 原文（孕期/儿童/过敏不给剂量） | 故障注入下成功率：无容错配置 73.3%→83.3%，完整配置保持 90.0% |
 | 2026-11-09 | 数据 v3 | 补真实数据、实体工具轨迹、真实偏好对；跨来源去重；长度平衡 | SFT 4,566→20,663；DPO 365→2,971；验证集同问题 0 |
-| 2026-11-09 | 小模型档 | Qwen3.5-2B 实测 80 条真实问题（非思考、无工具） | 门控分给它的 10 题全部通过；全部 80 题自动通过率 81.3%（微调 MedicalGPT 73.8%），药品事实覆盖 0.75（MedicalGPT 0.88） |
+| 2026-11-09 | 小模型档 | Qwen3.5-2B 实测 80 条真实问题（非思考、无工具） | 门控分给它的 10 题全部通过；全部 80 题自动通过率 81.3%（Medical-GPT 旧版 73.8%），药品事实覆盖 0.75（Medical-GPT 旧版 0.88） |
 | 2026-11-09 | 复杂问诊 MCP 工具 | 编排器包成 `complex_consult`，网关对多意图问题确定性触发，出错用相同参数续跑 | Mock 机制评测：7 个崩溃点重试后全部续跑完成，worker 级崩溃只重做未完成的 worker；多意图子问题覆盖 66.7%→83.3%；同时修复了编排器在子问题多于 worker 上限时截断丢题、“X有什么药和饮食建议”拆不开两个问题 |
 | 2026-11-10 | 复杂问诊并入网关 | 编排器从单独的 MCP Server 移进路由网关进程，规则触发 + 模型通过内部工具按需调用；出错自动续跑一次，仍失败退回单 agent | 少一个 DSH 插件实例和一个 MCP Server 进程，少一轮工具往返；7 个崩溃点续跑、子问题覆盖 83.3% 不变 |
 | 2026-11-10 | 复杂问诊改由模型决定 | 去掉规则触发：先路由选档，再由被选中的模型决定是否调用；补“何时调用”训练数据（正例 400 / 反例 400）；补全子问题拆分规则（分句、“A和B分别…”） | 8 种多意图问法可拆分的从 3 种增至 8 种；真实问答检索 Recall@5 0.469 → 0.476；4 个评测集里被误拆的单一问题 1 条 |
 | 2026-11-10 | 路由器训练 / 评测分离 | 建 2,000 条独立路由数据集（去重去污染，train / val / test）；标注、训练、无标签校准三个脚本；运行时优先加载独立训练的路由器 | 查出冷启动阈值的问题：dev 80 上交给强模型 49%，真实提问上 82%；在真实提问 val 上重新校准后，test 上 39.9% |
 | 2026-11-11 | 开源判别模型替代 Jev；dev 扩充 | 6 个开源判别 / 评审 / 安全模型在 dev 80 上零样本对比（规则没拦下的部分 AUROC：Skywork 奖励模型 0.6B 0.91、Granite Guardian 0.81、Laya 0.53，其余≈0.5）；采用可自定义类型化判定的 Laya 并微调（是否答砸 / 质量等级 / 失败类别），本机 laya-serve 部署，阈值部署后在验证集上定；训练数据 = 基座模型真实回答 + 百川标签 + 语义故障注入；dev 由独立标注者扩充 216 条（真实提问 87 + 手写 129），合计 296 条 | 本机用假标签跑通 微调 → 部署 → 调用 → 评测；真实标签训练待 GPU，效果待测 |
 | 2026-11-10 | 复杂问诊成为第 8 个 MCP 工具 | `complex_consult` 注册进医疗工具 MCP Server，和其它 7 个工具一样由模型调用、DSH 执行；网关只负责把完成的结果直接交付；编排器的 worker 连不含它的 Server（防递归） | DSH 仍只有一个 `mcp-medical` 实例；会话记录里能看到这一步工具调用；训练数据的工具清单同步为 8 个 |
-| 2026-11-13～14 | Qwen3.5-9B 重训：SFT → DPO → OPD → 工具修补 | DPO 数据修复（验证集与训练集零重叠、固定话术分训练 / 验证两组、去掉推荐具体药物的偏好对）；OPD 教师（27B）补空思考块 + 教师专属规则、生成开 KV 缓存；OPD 后用工具样本 + OPD 自生成直接答做 200 步小步修补；LoRA 合并先改参数名再逐元素核对 | DPO v3 在新验证集准确率 1.000（v2 0.906，急症组 0.545）；OPD 在 120 条没训练过的问答上：原地复读 55→0、写到上限没说完 47→0、主动点名推荐药物（人工核对）约 10→0；工具修补后 150 条工具题“调完还写正文” 32→0、工具名一致 149/150、误调工具 0/25 |
-| 2026-11-14 | 端到端评测（296 条，固定本地档，校验只用规则） | 新 9B 用 vLLM 0.33 + hermes 部署 | dev 80：自动通过 0.738→0.875、急症建议 0.833→1.000、高风险合规 0.500→1.000、格式干净 0.925→1.000、多意图 0.500→0.600、不编造历史 0.500→1.000；药品事实覆盖 0.883→0.700（下降）。296 条整体自动通过 0.909 |
-| 2026-11-14 | Laya 判别模型真实标签微调 | 2B / 9B 基座在路由数据集 train / val 上作答 3,474 条，百川标注成功约 2,200 条（其余因百川额度用完未标）+ 语义故障注入 → train 2,451 / val 378 | 留出集准确率 0.28→0.83；判别器验证集 AUROC 0.894（阈值 0.88 时 P 0.80 / R 0.74）；dev 80 规则放行部分 AUROC 0.59（零样本 0.48），规则→Laya 级联 F1 0.50 低于纯规则 0.73；端到端接入后修复 / 兜底 19→60 题、整体自动通过 0.909→0.892 → 默认不接，只用规则 |
-| 2026-11-16 | 路由器用最终 9B 重训 | 最终 9B 在 2,000 条路由数据集上作答 + 百川标注（train / val 与判别模型数据共用一次采集） | 答砸率 9.0%（同题 9B 基座约 22%）；test AUROC 0.584（冷启动版 0.514），40% 预算下失败召回 0.50，只比随机好一点：失败里 43% 会被校验器当场拦下、6% 被安全规则强制走强模型，路由器能补的约 4% |
-| 2026-11-16 | 校验规则 + 判别模型 v2 / v3 | 新增禁忌症交叉检查（精选 KB 禁忌字段 + 手工高风险药物—病情表）与按子问题拆分的漏答检查；Laya 加入最终 9B 的回答，v3 过采样最终 9B 失败、降低注入比例、阈值只在最终 9B 上定 | 禁忌规则在 1,720 条最终 9B 回答上抓到“脑出血 + 阿替普酶”，误报 0；dev 80 级联 F1：v2 0.493 → v3 0.765（纯规则 0.727，首次超过）；对最终 9B 自己的失败仍只抓到 1/15。端到端（百川可用并打分）：只用规则可接受及以上 0.924、接入 v2 0.925 |
+| 2026-11-13～14 | 本地模型 Medical-GPT 换 Qwen3.5-9B 重训 | SFT → DPO（数据修复：验证集零重叠、去掉推荐具体药物的偏好对）→ OPD（Qwen3.5-27B 教师）→ 工具调用小步修补 | 120 条未训练问答：原地复读 55→0、主动点名推荐药物约 10→0；150 条工具题“调完还写正文” 0、工具名一致 149/150 |
+| 2026-11-14～16 | 端到端评测（296 条，走完整编排） | 新模型用 vLLM + hermes 部署 | dev 80：自动通过 0.738→0.875、急症建议 0.833→1.000、高风险合规 0.500→1.000、格式干净 0.925→1.000；296 条百川判可接受及以上 0.924 |
+| 2026-11-16 | 校验与路由更新 | 新增禁忌症交叉检查（药物 × 用户病情）与按子问题拆分的漏答检查；判别模型 Laya v3（加入新模型的回答）默认接入；路由器用新模型的标注重训 | dev 80 规则→判别模型级联 F1 0.765（纯规则 0.727）；禁忌规则在 1,720 条新模型回答上 0 误报 |
 
 ## 🔧 关键问题解决方案
 
@@ -189,7 +187,7 @@ DeepSeek Harness 处于 developer preview（存在 breaking change）。医疗�
 | 工具协议 | MCP（Python SDK 2.x `MCPServer` / `Client`） | 替代原 tool registry；DSH 用 `dsh-mcp-client` 接入 |
 | 编排 | `medagent`（Router–Worker） | 检查点、暂停/恢复、并行 worker；作为 MCP 工具 `complex_consult` 由模型按需调用 |
 | 路由 | 安全规则 + RouteLLM 矩阵分解路由（numpy 复现）+ 小模型门控 | small / local / strong 三档 |
-| 模型 | small：Qwen3.5-2B / local：微调 MedicalGPT（vLLM）/ strong：Baichuan-M3 → DeepSeek | OpenAI 兼容接口，`configs/models.yaml` |
+| 模型 | small：Qwen3.5-2B / local：Medical-GPT（vLLM）/ strong：Baichuan-M3 → DeepSeek | OpenAI 兼容接口，`configs/models.yaml` |
 | 推理 | vLLM + 自定义对话模板 + hermes 工具解析器 | 训练 / 推理格式逐字一致 |
 | RAG | BM25(jieba) + bge-small-zh + KG + 本地 FTS5 全文索引（329 万篇）+ openFDA / PubMed / Europe PMC / MedlinePlus，RRF，bge-reranker-base | 抽取式压缩、Redis / 内存缓存 |
 | 容错 | Redis 共享熔断（Lua）、分类重试、幂等、Saga、SQLite 检查点 + CAS | 混沌测试可复现 |
@@ -201,7 +199,7 @@ DeepSeek Harness 处于 developer preview（存在 breaking change）。医疗�
 
 ## 🚀 快速开始
 
-> 部署细节见 [部署文档](docs/Medical-GPT_deployment.md)、[DSH 部署日志](docs/dsh_deploy_log.md)。
+> 部署细节见 [部署文档](docs/deployment.md)、[DSH 部署日志](docs/dsh_deploy_log.md)。
 
 ### 阶段 A：训练（需 GPU，建议 AutoDL 3090/4090）
 
@@ -235,8 +233,8 @@ pip install -e ".[dev,rag,redis]"
 python -m pytest -q                                  # 单元测试（离线）
 medagent ask --mock "我胸口剧痛冒冷汗"                # 不连模型也能跑通完整编排（离线模式）
 cp .env.example .env    # 在 .env 里填 BAICHUAN_API_KEY 等；.env 只在本机、不会上传，网关 / MCP Server 启动时自动读取
-# 1) 微调 MedicalGPT：vLLM 起在 :8000（Qwen3.5 版见 training/qwen35/06_serve.sh）
-#    判别模型：laya-serve 起在 :8002（training/verifier/04_serve.sh），.env 里加 MEDAGENT_VERIFIER_URL=http://127.0.0.1:8002
+# 1) 本地模型 Medical-GPT：vLLM 起在 :8000（Qwen3.5 版见 training/qwen35/06_serve.sh）
+#    判别模型：laya-serve 起在 :8002（training/verifier/04_serve.sh，加载 v3），校验器默认接入
 # 2) 路由网关（DSH 的模型端点）
 medagent-gateway --port 9000              # 联调可加 --mock，不需要 GPU / API
 # 3) DSH：settings.yaml 放到 ~/.dsh/，MCP Server 由 cordis.yml 里的 dsh-mcp-client 自动以 stdio 拉起
@@ -341,8 +339,8 @@ MedicalGPT_agent/
 | [Qwen3.5 重训方案](docs/train_qwen35_plan.md) | 基座选型、训练 / 推理格式对齐、按顺序执行的训练步骤 |
 | [开源判别模型](docs/verifier_model.md) | 为什么用 Laya 替代 Jev、零样本选型、三个判定、训练数据、部署 |
 | [评测说明](evaluation/README.md) | 评测集、标注规范、复现命令 |
-| [原架构文档](docs/Medical-GPT-agent_architecture.md) / [DSH 架构](docs/Dsh_architecture.md) | v1 设计 |
-| [部署文档](docs/Medical-GPT_deployment.md) / [DSH 部署日志](docs/dsh_deploy_log.md) | 环境、启动、踩坑 |
+| [原架构文档](docs/architecture_v1.md) / [DSH 架构](docs/Dsh_architecture.md) | v1 设计 |
+| [部署文档](docs/deployment.md) / [DSH 部署日志](docs/dsh_deploy_log.md) | 环境、启动、踩坑 |
 
 ---
 

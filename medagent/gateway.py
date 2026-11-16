@@ -1,7 +1,7 @@
 """OpenAI 兼容的路由网关：让 DeepSeek Harness（DSH）作为主运行时，同时用上微调过的 MedicalGPT。
 
     DSH（agent 循环 / 会话 / 压缩 / Web·CLI）
-      ├── 模型请求 → 本网关 http://127.0.0.1:9000/v1  ──→ local：微调 MedicalGPT（vLLM :8000）
+      ├── 模型请求 → 本网关 http://127.0.0.1:9000/v1  ──→ local：Medical-GPT（vLLM :8000）
       │                │ 分诊 → RouteLLM 路由 → 熔断/重试/跨层兜底   └→ strong：Baichuan-M3 / DeepSeek
       │                │ 泄漏的工具调用 → 修正为标准 tool_calls
       │                └ 最终回答 → 静默失败校验（必要时升级强模型重答）→ 输出安全关
