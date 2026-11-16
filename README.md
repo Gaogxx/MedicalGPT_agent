@@ -130,7 +130,6 @@ MedicalGPT 读取的是 `conversations` 结构，`export_formats.py` 把 OpenAI 
 | 工具调用小步修补 | RTX PRO 6000 Blackwell 96GB | LoRA（rank 8），3,200 条、200 步，约 3 秒/步、10 分钟 | 150 条工具题：调完还写正文 32→0、工具名一致 146→149、参数完全一致 126→132；不该调工具的题误调 0/25 |
 | Laya v3 判别模型 | RTX PRO 6000 Blackwell 96GB | 3.2 亿参数，微调 4 epoch，约 10～15 分钟 | 留出判定准确率 0.265→0.862；dev 80 上规则→Laya 级联 F1 0.765（纯规则 0.727） |
 | Skywork 奖励模型 | 不训练（RTX PRO 6000 上部署，Mac M5 也能跑） | Skywork-Reward-V2-Qwen3-1.7B 零样本打分，bf16 约 4GB | Medical-GPT 规则放行回答上 AUROC 0.818；接在 Laya 后，dev 80 级联召回 0.65→0.80 |
-| 路由器（RouteLLM-MF） | CPU | 2,000 条新模型标注，train / val / test 切分 | test AUROC 0.584，40% 强模型预算下失败召回 0.50 |
 
 整体效果（296 条端到端评测，dev 80 与 2026-09 旧版同指标）：自动检查通过率 0.738→0.875、急症建议率 0.833→1.000、高风险合规率 0.500→1.000、格式干净率 0.925→1.000；百川判可接受及以上 0.924。
 
