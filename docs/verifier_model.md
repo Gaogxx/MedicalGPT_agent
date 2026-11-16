@@ -145,6 +145,17 @@ Laya v3 对 Medical-GPT 自己的失败只抓到 1/15。为了分清是数据太
 代价：约 3% 的回答多一次强模型重答（其中约三分之一确实答砸）。Laya 仍保留，负责失败类别和质量等级（写进校验结论，便于排查）。
 结果：`evaluation/results/reward_eval.json`，阈值：`medagent/verify/artifacts/reward_model.json`。
 
+### 2026-11-16 定版：默认 规则 → Laya v3 → Skywork
+
+- **Laya 的作用**：奖励模型看的是回答“好不好、全不全”，对“开药 / 诊断请求没交给医生”这类合规问题不敏感；Laya 用本项目的失败分类训练过，
+  能把这类失败补上。dev 80 上：规则 → Skywork 召回 0.75、F1 0.732；加上 Laya 后召回 0.80、F1 0.762，误报都是 6 条（Laya 的阈值 0.98，只拦很有把握的）。
+  Laya 还给出失败类别和质量等级，写进校验结论，便于排查。
+- **端到端验证**（296 条，`run_live_eval.py --temperature 0 --strong-repair`：本地模型贪心解码、被拦下的题按线上方式交给百川重答；
+  `judge_paired.py --diff-only` 只让百川给两条链路回答不同的题打分）：两条链路总体质量持平，结果在
+  `evaluation/results/live_v4_A2.json`、`live_v4_B2.json`、`judge_paired_v4_strong.json`。
+- **切换**：想用“规则 → Skywork”，在 `.env` 里写一行 `MEDAGENT_VERIFIER_URL=`（空值），Laya 那一步就跳过；
+  想只用规则，再加一行 `MEDAGENT_REWARD_URL=`。
+
 ## 6. 已知限制
 
 - 最终 9B 的真实失败样本少（train 81 条、val 15 条），对它的判别效果评估方差大；要提升需要更多它的失败样本，或换知识更强的判别模型；

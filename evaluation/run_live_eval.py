@@ -80,10 +80,22 @@ async def main() -> None:
     ap.add_argument("--limit", type=int)
     ap.add_argument("--set", choices=("dev80", "ext", "all"), default="all")
     ap.add_argument("--judge", choices=("none", "strong", "verifier"), default="none")
+    ap.add_argument("--strong-repair", action="store_true",
+                    help="被校验器拦下的题按线上方式交给 strong 档（configs/models.yaml）重答；不加时池里只有本地模型，重答也由它自己完成")
+    ap.add_argument("--temperature", type=float, help="固定本地模型的生成温度（默认沿用线上 0.3）；对比两种校验链路时用 0 做逐题配对，"
+                                                    "否则两次运行的回答会因采样不同而处处不一样")
     args = ap.parse_args()
     provider = MockProvider("mock") if args.mock else OpenAICompatProvider("local-eval", args.base_url, args.model,
                                                                           api_key_env="VLLM_API_KEY", timeout=120)
+    if args.temperature is not None and not args.mock:
+        _chat = provider.chat
+
+        async def _fixed_temp(messages, tools=None, temperature=0.3, max_tokens=1024):
+            return await _chat(messages, tools, args.temperature, max_tokens)
+        provider.chat = _fixed_temp
     pool = ModelPool({"local": [provider]})
+    if args.strong_repair and not args.mock:
+        pool = ModelPool({"local": [provider], "strong": ModelPool.from_yaml(str(ROOT / "configs" / "models.yaml")).tiers["strong"]})
     ds = ROOT / "evaluation" / "datasets"
     cases = []
     if args.set in ("dev80", "all"):
