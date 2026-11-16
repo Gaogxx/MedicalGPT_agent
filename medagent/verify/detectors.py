@@ -118,6 +118,19 @@ def detect(answer: str, *, query: str, assessment: SafetyAssessment | None = Non
         generic_miss = not named and _GENERIC_DRUG_ASK.search(query) and not kb.link_entities(text)["drug"]
         if missing or generic_miss:
             f.append(Finding("incomplete_multi", ErrorKind.SILENT, "block", ",".join(missing) or "drug"))
+    if not any(x.code == "incomplete_multi" for x in f) and len(stripped) >= 8:
+        # 2026-11-16 漏答检查：复用复杂问诊的子问题拆分，逐个子问题看回答里有没有谈到（coverage.py）
+        from .coverage import missed_subquestions
+        # 只看当前这句提问：历史回顾（“我之前问过……你分别给了建议……”）拼在 query 前面时去掉，否则会被拆成子问题（dev 80 b73）
+        cur = query[len(history):] if history and query.startswith(history) else query
+        miss = missed_subquestions(cur, text)
+        if miss:
+            f.append(Finding("incomplete_multi", ErrorKind.SILENT, "block", "漏答：" + "；".join(miss)[:60]))
+    # 2026-11-16 禁忌症交叉检查：回答里的药 × 用户描述的病情（contraindications.py）
+    from .contraindications import check as _contra
+    contra = _contra(text, ctx_text)
+    if contra:
+        f.append(Finding("contraindicated_drug", ErrorKind.SILENT, "block", "；".join(contra)[:120]))
 
     if observations is not None:
         evid = json.dumps(observations, ensure_ascii=False)

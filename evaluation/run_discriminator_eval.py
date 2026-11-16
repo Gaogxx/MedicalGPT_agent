@@ -52,6 +52,8 @@ def main() -> None:
     ap.add_argument("--mock", action="store_true")
     ap.add_argument("--val", default=str(ROOT / "training" / "data" / "verifier" / "laya" / "val.jsonl"))
     ap.add_argument("--no-write", action="store_true", help="不写阈值文件（只看效果）")
+    ap.add_argument("--val-model", default="", help="只用这个模型的验证回答定阈值（如 final9b：线上判的就是它的回答）")
+    ap.add_argument("--out", default=str(ROOT / "evaluation" / "results" / "discriminator_eval.json"))
     args = ap.parse_args()
     if args.mock:
         from starlette.testclient import TestClient
@@ -69,6 +71,9 @@ def main() -> None:
     if val_path.exists():
         rows = [json.loads(line) for line in open(val_path, encoding="utf-8")]
         rows = [r for r in rows if not r["meta"].get("rule_block") and not r["meta"].get("synthetic")]
+        if args.val_model:
+            rows = [r for r in rows if r["meta"].get("model") == args.val_model]
+            res["val_model"] = args.val_model
         t0 = time.perf_counter()
         pv = np.array([p_fail(r["meta"]["raw_state"]) for r in rows])
         ms = (time.perf_counter() - t0) * 1000 / max(len(rows), 1)
@@ -112,7 +117,7 @@ def main() -> None:
         "baselines": {"rules_f1_it1": 0.69, "zero_shot_auroc": {"laya_multilingual": 0.48, "skywork_reward_v2_0.6b": 0.85}},
         "note": "dev 80 的回答来自 2026-09 旧模型；不参与定阈值，只做外部测试",
     }
-    out = ROOT / "evaluation" / "results" / ("discriminator_eval_mock.json" if args.mock else "discriminator_eval.json")
+    out = ROOT / "evaluation" / "results" / "discriminator_eval_mock.json" if args.mock else Path(args.out)
     if not args.mock:
         out.write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
     if not args.mock and not args.no_write and isinstance(res["val"], dict):

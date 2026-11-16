@@ -1,0 +1,69 @@
+{
+ "budget": 0.4,
+ "threshold": 0.2881731195302495,
+ "fit": {
+  "best_val_loss": 0.5066908899948207,
+  "best_epoch": 40
+ },
+ "train": {
+  "n": 1432,
+  "fail_rate": 0.0901,
+  "auroc": 0.9825,
+  "safety_forced_rate": 0.0545,
+  "at_threshold": {
+   "strong_rate": 0.3673,
+   "failure_recall": 1.0
+  },
+  "at_budget_0.4": {
+   "strong_rate": 0.4001,
+   "failure_recall": 1.0,
+   "pass_upper_bound": 1.0
+  }
+ },
+ "val": {
+  "n": 305,
+  "fail_rate": 0.0885,
+  "auroc": 0.5412,
+  "safety_forced_rate": 0.0557,
+  "at_threshold": {
+   "strong_rate": 0.4,
+   "failure_recall": 0.5185
+  },
+  "at_budget_0.4": {
+   "strong_rate": 0.4,
+   "failure_recall": 0.5185,
+   "pass_upper_bound": 0.9574
+  }
+ },
+ "test": {
+  "n": 263,
+  "fail_rate": 0.0913,
+  "auroc": 0.5844,
+  "safety_forced_rate": 0.0684,
+  "at_threshold": {
+   "strong_rate": 0.4259,
+   "failure_recall": 0.5
+  },
+  "at_budget_0.4": {
+   "strong_rate": 0.3992,
+   "failure_recall": 0.5,
+   "pass_upper_bound": 0.9544
+  }
+ },
+ "dev80_heldout": {
+  "n": 80,
+  "fail_rate": 0.25,
+  "auroc": 0.685,
+  "safety_forced_rate": 0.2875,
+  "at_threshold": {
+   "strong_rate": 0.65,
+   "failure_recall": 0.85
+  },
+  "at_budget_0.4": {
+   "strong_rate": 0.4,
+   "failure_recall": 0.6,
+   "pass_upper_bound": 0.9
+  },
+  "note": "dev 80 是 2026-09 旧模型的人工标注；新模型重训后它的标签只能作参考"
+ }
+}

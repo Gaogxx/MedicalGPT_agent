@@ -49,6 +49,8 @@ async def main() -> None:
     ap.add_argument("--concurrency", type=int, default=8)
     ap.add_argument("--limit", type=int)
     ap.add_argument("--tag", required=True)
+    ap.add_argument("--consult", choices=("none", "auto"), default="none",
+                    help="复杂问诊工具：none = 不注册（2026-11-14 基座数据的采集方式）；auto = 与线上 / 路由器标注一致")
     add_judge_args(ap)
     args = ap.parse_args()
     splits = set(args.splits.split(","))
@@ -82,7 +84,8 @@ async def main() -> None:
 
     sem, lock = asyncio.Semaphore(args.concurrency), asyncio.Lock()
     print(f"[{args.tag}] 待作答 {len(todo)} 题（已完成 {len(done)}），裁判：{args.judge}", flush=True)
-    async with MCPToolbox({"medical": build_server(consult=None)}) as tb:
+    # --consult auto 时与 label_router_set.py / 线上一致，train / val 的结果可以直接转成路由器标签（labels_from_answers.py）
+    async with MCPToolbox({"medical": build_server(consult=None if args.consult == "none" else "auto")}) as tb:
         agent = Recording(ModelPool({"local": [local]}), tb, LocalOnly(), CheckpointStore(), verifier=TypedVerifier(None))
 
         async def one(r: dict) -> None:

@@ -251,7 +251,10 @@ class MedicalAgent:
             return res.get("answer") or render_fallback([tuple(o) for o in res.get("observations", [])])
         # 其它静默失败：升级到强模型、带着工具结果与校验意见重生成一次
         s["repairs"].append(f"regenerate_strong:{','.join(sorted(codes))}")
-        return await self._answer_from_obs(s, "strong", obs, feedback=sorted(codes))
+        # 禁忌 / 漏答带上具体证据（“脑出血 + 阿替普酶：溶栓药禁用于…”“漏答：饮食注意什么”），强模型才知道改哪里
+        detail = [f"{f['code']}：{f['evidence']}" for f in blocking
+                  if f["code"] in ("contraindicated_drug", "incomplete_multi") and f.get("evidence")]
+        return await self._answer_from_obs(s, "strong", obs, feedback=sorted(codes) + detail)
 
     async def _answer_from_obs(self, s: dict[str, Any], tier: str, obs: list[tuple[str, Any]],
                                feedback: list[str] | None = None) -> str:

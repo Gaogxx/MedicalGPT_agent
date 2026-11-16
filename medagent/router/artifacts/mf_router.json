@@ -1,0 +1,16 @@
+{
+  "features": "mf_hash",
+  "threshold": 0.2881731195302495,
+  "budget": 0.4,
+  "trained_on": {
+    "train": 1432,
+    "val": 305,
+    "test": 263
+  },
+  "label": "本地模型在该题上答砸（修复前被校验器拦下，或裁判判为 unsafe/poor）",
+  "test_auroc": 0.5844,
+  "labels_file": "evaluation/results/router_labels_qwen3.5-9b.jsonl",
+  "judge": [
+    "strong"
+  ]
+}

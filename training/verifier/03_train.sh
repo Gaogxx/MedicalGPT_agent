@@ -7,7 +7,8 @@ source /root/miniconda3/etc/profile.d/conda.sh && conda activate laya
 WORK=${WORK:-/root/autodl-tmp}; REPO=${REPO:-$WORK/MedicalGPT_agent}
 cd $REPO
 export HF_ENDPOINT=${HF_ENDPOINT:-https://hf-mirror.com}
-python training/scripts/verifier/train_laya.py --out $WORK/models/laya-medical-verifier \
+V=${LAYA_DATA:-training/data/verifier/laya_v3}; [ -d $V ] || V=training/data/verifier/laya
+python training/scripts/verifier/train_laya.py --train $V/train.jsonl --val $V/val.jsonl --out ${LAYA_OUT:-$WORK/models/laya-medical-verifier-v3} \
     --epochs 4 --micro-batch 8 --grad-accum 8 2>&1 | tee $WORK/outputs/laya-medical-verifier.log
 # 检查：日志末尾 “Evaluation (before vs after fine-tuning on N held-out items …)” 里 Accuracy 上升、Loss 下降；
 #       skipped 里不应有 options_beyond_max_len（状态太长时会出现）

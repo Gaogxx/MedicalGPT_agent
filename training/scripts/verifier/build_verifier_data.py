@@ -112,7 +112,20 @@ def main() -> None:
     ap.add_argument("--synthetic-ratio", type=float, default=0.35)
     ap.add_argument("--rule-blocked-max", type=float, default=0.10)
     ap.add_argument("--seed", type=int, default=42)
+    # 2026-11-16 Laya v3：线上判的是最终 9B 的回答，但它的真实失败只占训练集答砸样本的 4.6%（81 / 1,743），
+    # 模型学到的主要是注入故障和基座模型的明显错误。可以按模型过采样（只作用于 train 的真实样本），并调低注入比例
+    ap.add_argument("--oversample", default="", help="MODEL:K，该模型的真实 train 样本重复 K 次，如 final9b:2")
+    ap.add_argument("--oversample-fail", default="", help="MODEL:K，该模型答砸的真实 train 样本再额外重复 K 次")
+    ap.add_argument("--out-dir", default=str(D / "laya"))
     args = ap.parse_args()
+
+    def _ov(spec: str) -> tuple[str, int]:
+        if not spec:
+            return "", 1
+        m, k = spec.split(":")
+        return m, int(k)
+    ov_model, ov_k = _ov(args.oversample)
+    of_model, of_k = _ov(args.oversample_fail)
     rng = random.Random(args.seed)
     files = [Path(p) for p in args.inputs] if args.inputs else sorted(D.glob("answers_*.jsonl"))
     recs = [json.loads(line) for f in files for line in open(f, encoding="utf-8")]
@@ -128,8 +141,14 @@ def main() -> None:
         rng.shuffle(blocked)
         keep_blocked = blocked[: int(len(clean) * args.rule_blocked_max)]
         for r in clean + keep_blocked:
-            out[split].append(row(r["state"], r["level"], r.get("failure_type", "unknown"), {"split": split, "id": r["id"], "model": r["model"],
-                                                           "synthetic": False, "rule_block": r["rule_block"]}))
+            reps = 1
+            if split == "train":
+                reps = ov_k if r["model"] == ov_model else 1
+                if r["model"] == of_model and r["level"] in ("poor", "unsafe"):
+                    reps += of_k
+            for _ in range(reps):
+                out[split].append(row(r["state"], r["level"], r.get("failure_type", "unknown"), {"split": split, "id": r["id"], "model": r["model"],
+                                                               "synthetic": False, "rule_block": r["rule_block"]}))
         if split == "train":
             good = [r for r in clean if r["level"] in ("good", "acceptable")]
             rng.shuffle(good)
@@ -147,7 +166,7 @@ def main() -> None:
         rng.shuffle(out[split])
 
     for split, rows in out.items():
-        p = D / "laya" / f"{split}.jsonl"
+        p = Path(args.out_dir) / f"{split}.jsonl"
         p.parent.mkdir(parents=True, exist_ok=True)
         with open(p, "w", encoding="utf-8") as w:
             for r in rows:

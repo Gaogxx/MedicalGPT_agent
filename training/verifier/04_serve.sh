@@ -5,7 +5,7 @@ source /root/miniconda3/etc/profile.d/conda.sh && conda activate laya
 WORK=${WORK:-/root/autodl-tmp}
 pip install -q "laya[serve]"
 LAYA_HOST=127.0.0.1 LAYA_PORT=8002 \
-LAYA_EXTRA_MODELS="{\"medical-verifier\": \"$WORK/models/laya-medical-verifier\"}" \
+LAYA_EXTRA_MODELS="{\"medical-verifier\": \"${LAYA_MODEL:-$WORK/models/laya-medical-verifier-v3}\"}" \
 LAYA_MODELS=medical-verifier LAYA_DEFAULT_MODEL=medical-verifier \
     laya-serve
 # 网关 / 编排器 / 标注脚本通过 .env 接入：MEDAGENT_VERIFIER_URL=http://127.0.0.1:8002

@@ -49,4 +49,4 @@ training/data/export_v3/
 # fix_dpo_v3.py 生成；入库的是导出后的 openai_v3/dpo
 training/data/reward_v3_fixed/
 # build_verifier_data.py（seed 42）由 answers_*.jsonl 重建
-training/data/verifier/laya/
+training/data/verifier/laya*/
