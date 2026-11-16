@@ -194,7 +194,7 @@ DeepSeek Harness 处于 developer preview（存在 breaking change）。医疗�
 
 ## 🚀 快速开始
 
-> 部署细节见 [部署文档](docs/deployment.md)、[DSH 部署日志](docs/dsh_deploy_log.md)。
+> 部署细节见 [部署文档](docs/deployment.md)。
 
 ### 阶段 A：训练（需 GPU，建议 AutoDL 3090/4090）
 
@@ -334,8 +334,7 @@ MedicalGPT_agent/
 | [Qwen3.5 重训方案](docs/train_qwen35_plan.md) | 基座选型、训练 / 推理格式对齐、按顺序执行的训练步骤 |
 | [开源判别模型](docs/verifier_model.md) | 为什么用 Laya 替代 Jev、零样本选型、三个判定、训练数据、部署 |
 | [评测说明](evaluation/README.md) | 评测集、标注规范、复现命令 |
-| [原架构文档](docs/architecture_v1.md) / [DSH 架构](docs/Dsh_architecture.md) | v1 设计 |
-| [部署文档](docs/deployment.md) / [DSH 部署日志](docs/dsh_deploy_log.md) | 环境、启动、踩坑 |
+| [部署文档](docs/deployment.md) | 环境、启动、踩坑 |
 
 ---
 

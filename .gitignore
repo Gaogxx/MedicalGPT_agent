@@ -50,3 +50,8 @@ training/data/export_v3/
 training/data/reward_v3_fixed/
 # build_verifier_data.py（seed 42）由 answers_*.jsonl 重建
 training/data/verifier/laya*/
+
+# 只留在本机、不上传的文档
+docs/dsh_deploy_log.md
+docs/Dsh_architecture.md
+docs/architecture_v1.md
