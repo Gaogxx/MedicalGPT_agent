@@ -88,7 +88,7 @@ class Verdict:
     blocked: bool
     reason: str
     confidence: float
-    source: str                        # rules | discriminator | rules(discriminator_unavailable)
+    source: str                        # rules | discriminator | reward_model | rules(discriminator_unavailable)
     needs_review: bool = False
     quality: TypedDecision | None = None
 
@@ -104,8 +104,13 @@ class TypedVerifier:
     review_at: float = 0.5            # review_at ~ block_at 放行，但进人工复核队列
     attribution_min: float = 0.7
     score_quality: bool = False
+    # 校验器 v4（2026-11-16）：Laya 放行后再看奖励模型分（reward.py）；分数越低越可能答砸
+    reward: Any = None                # RewardClient（或任何实现 enabled / score 的对象）
+    reward_block: float | None = None
+    reward_review: float | None = None
     stats: dict[str, int] = field(default_factory=lambda: {"rules_block": 0, "disc_block": 0, "disc_review": 0,
-                                                           "disc_pass": 0, "disc_error": 0, "attr_disc": 0, "attr_rules": 0})
+                                                           "disc_pass": 0, "disc_error": 0, "attr_disc": 0, "attr_rules": 0,
+                                                           "reward_block": 0, "reward_review": 0, "reward_error": 0})
 
     def verify(self, query: str, answer: str, findings: list[Finding], observations: list[Any] | None = None,
                assessment: Any = None) -> Verdict:
@@ -114,23 +119,41 @@ class TypedVerifier:
             self.stats["rules_block"] += 1
             return Verdict(True, ",".join(f.code for f in block), 0.97, "rules")
         if not _supports(self.client, SILENT_FAILURE):
-            return Verdict(False, "rules_pass", 0.5, "rules")
+            return self._reward_check(query, answer, Verdict(False, "rules_pass", 0.5, "rules"))
         state = answer_state(query, answer, observations, findings, assessment)
         try:
             d = self.client.decide(SILENT_FAILURE, state)
             q = self.client.decide(ANSWER_QUALITY, state) if self.score_quality and _supports(self.client, ANSWER_QUALITY) else None
         except Exception:  # noqa: BLE001
             self.stats["disc_error"] += 1
-            return Verdict(False, "rules_pass", 0.5, "rules(discriminator_unavailable)")
+            return self._reward_check(query, answer, Verdict(False, "rules_pass", 0.5, "rules(discriminator_unavailable)"))
         p = d.confidence if d.value else 1 - d.confidence     # 统一成 P(是静默失败)
         if p >= self.block_at:
             self.stats["disc_block"] += 1
             return Verdict(True, "discriminator:silent_failure" + self._failure_type(state), p, "discriminator", quality=q)
         if p >= self.review_at:
             self.stats["disc_review"] += 1
-            return Verdict(False, "discriminator:review", p, "discriminator", needs_review=True, quality=q)
+            return self._reward_check(query, answer, Verdict(False, "discriminator:review", p, "discriminator", needs_review=True, quality=q))
         self.stats["disc_pass"] += 1
-        return Verdict(False, "discriminator:pass", p, "discriminator", quality=q)
+        return self._reward_check(query, answer, Verdict(False, "discriminator:pass", p, "discriminator", quality=q))
+
+    def _reward_check(self, query: str, answer: str, prev: Verdict) -> Verdict:
+        """规则和 Laya 都放行时，再看奖励模型：分 ≤ reward_block 升级重答，≤ reward_review 进人工复核；连不上就沿用 prev。"""
+        if self.reward is None or not getattr(self.reward, "enabled", False) or self.reward_block is None:
+            return prev
+        try:
+            r = self.reward.score(query, answer)
+        except Exception:  # noqa: BLE001
+            self.stats["reward_error"] += 1
+            return prev
+        if r <= self.reward_block:
+            self.stats["reward_block"] += 1
+            return Verdict(True, f"reward_model:low_score({r:.2f})", prev.confidence, "reward_model", quality=prev.quality)
+        if self.reward_review is not None and r <= self.reward_review:
+            self.stats["reward_review"] += 1
+            return Verdict(False, f"{prev.reason}+reward_review({r:.2f})", prev.confidence, prev.source,
+                           needs_review=True, quality=prev.quality)
+        return prev
 
     def _failure_type(self, state: dict[str, Any]) -> str:
         """判别模型给出的失败类别（同一次请求里已经算好，不额外调用）；拿不到就不写。"""
@@ -166,8 +189,11 @@ class TypedVerifier:
 
 
 def default_verifier() -> TypedVerifier:
-    """网关 / 编排器默认用的校验器：默认接本机判别模型（MEDAGENT_VERIFIER_URL，默认 :8002；设成空值只用规则），连不上时退回规则。
+    """网关 / 编排器默认用的校验器：规则 → 本机判别模型 Laya（MEDAGENT_VERIFIER_URL，默认 :8002）→ 奖励模型（MEDAGENT_REWARD_URL，默认 :8003）；
+    设成空值即跳过对应一步，连不上时自动跳过。
     阈值优先取部署后校准出的 medagent/verify/artifacts/discriminator.json。"""
     from .discriminator import DiscriminatorClient, load_calibration
-    cal = load_calibration()
-    return TypedVerifier(DiscriminatorClient(), block_at=cal.get("block_at", 0.8), review_at=cal.get("review_at", 0.5))
+    from .reward import RewardClient, load_reward_calibration
+    cal, rcal = load_calibration(), load_reward_calibration()
+    return TypedVerifier(DiscriminatorClient(), block_at=cal.get("block_at", 0.8), review_at=cal.get("review_at", 0.5),
+                         reward=RewardClient(), reward_block=rcal.get("block_reward"), reward_review=rcal.get("review_reward"))

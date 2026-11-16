@@ -212,9 +212,10 @@ class MedicalAgent:
                 [o for _, o in self._observations(s)], SafetyAssessment(**s["assessment"]))
             s["verdict"] = {"blocked": verdict.blocked, "reason": verdict.reason, "confidence": verdict.confidence,
                             "source": verdict.source, "needs_review": verdict.needs_review}
-            if verdict.blocked:   # 判别模型判为静默失败：按 SILENT 处理，走同一条修复路径
-                findings.append({"code": "discriminator_silent_failure", "kind": "silent", "severity": "block",
-                                 "evidence": f"p={verdict.confidence:.2f}"})
+            if verdict.blocked:   # 判别模型 / 奖励模型判为静默失败：按 SILENT 处理，走同一条修复路径
+                code = "reward_low_score" if verdict.source == "reward_model" else "discriminator_silent_failure"
+                findings.append({"code": code, "kind": "silent", "severity": "block",
+                                 "evidence": verdict.reason if code == "reward_low_score" else f"p={verdict.confidence:.2f}"})
         s["events"].append({"stage": "verify", "source": "verifier", "ok": True, "findings": findings})
         for _ in range(self.cfg.repair_attempts):
             blocking = [f for f in findings if f["severity"] == "block" and f["code"] not in GUARD_FIXABLE]
