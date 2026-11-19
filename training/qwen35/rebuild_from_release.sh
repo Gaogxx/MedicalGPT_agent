@@ -1,5 +1,6 @@
 #!/bin/bash
-# 从 GitHub Release（models-2026-11-20）的 LoRA 附件还原最终的 Qwen3.5-9B 医疗模型（约 18GB，不直接放附件）。
+# 从 GitHub Release 的 LoRA 附件还原最终的 Qwen3.5-9B 医疗模型（约 18GB，不直接放附件）。
+#   前四步 LoRA 在 models-2026-11-14，第 5 步 LoRA 和五步的 md5 在 models-2026-11-20。
 #   链路：Qwen3.5-9B 基座 + SFT → + DPO v3 → + OPD → + 工具修补 v2 → + 按工具结果作答（第 5 步，2026-11-20）= qwen3.5-9b-medical-v5
 #   每一步都是 remap_lora_for_vl.py 改参数名 → peft 合并 → 逐层核对增量（合并是确定性的）；
 #   中间结果 m-sft / m-dpo / m-opd / qwen3.5-9b-medical（第 4 步后的上一版最终模型）也会留在 $M 里，用不到可以删。
@@ -9,15 +10,15 @@
 # 用法：WORK=/path/to/work bash training/qwen35/rebuild_from_release.sh
 set -eo pipefail
 WORK=${WORK:-$HOME/medagent_rebuild}; REPO=${REPO:-$(cd "$(dirname "$0")/../.." && pwd)}; M=$WORK/models; R=$WORK/release
-TAG=${TAG:-models-2026-11-20}; PY=${PY:-python}
+GH=${GH:-Gaogxx/Medical_agent}; PY=${PY:-python}
 BASE=${BASE:-$M/Qwen3.5-9B}
 mkdir -p $R $M && cd $R
-for a in lora-1-sft lora-2-dpo-v3 lora-3-opd lora-4-toolfix-v2 lora-5-grounding SHA_md5; do
-  f=$a.tar; [ $a = SHA_md5 ] && f=SHA_md5.txt
-  [ -f $f ] || gh release download $TAG --repo Gaogxx/MedicalGPT_agent --pattern "$f" \
-    || curl -fL -o $f https://github.com/Gaogxx/MedicalGPT_agent/releases/download/$TAG/$f
-  [ $a = SHA_md5 ] || tar xf $f
-done
+get() {  # get <tag> <file>
+  [ -f $2 ] || gh release download $1 --repo $GH --pattern "$2" || curl -fL --retry 5 -o $2 https://github.com/$GH/releases/download/$1/$2
+}
+for a in lora-1-sft lora-2-dpo-v3 lora-3-opd lora-4-toolfix-v2; do get models-2026-11-14 $a.tar; tar xf $a.tar; done
+get models-2026-11-20 lora-5-grounding.tar; tar xf lora-5-grounding.tar
+get models-2026-11-20 SHA_md5.txt
 [ -f $BASE/config.json ] || $PY -c "from huggingface_hub import snapshot_download; snapshot_download('Qwen/Qwen3.5-9B', local_dir='$BASE')"
 CLEAN=${CLEAN:-0}     # CLEAN=1：每合完一步就核对并删掉上一步的中间结果，峰值磁盘约 40GB
 merge() {  # merge <base> <adapter> <out>

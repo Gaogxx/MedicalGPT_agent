@@ -70,7 +70,7 @@
 
 ### 从 GitHub Release 还原
 
-`models-2026-11-20` 放了五步的 LoRA（`lora-1-sft` → `lora-2-dpo-v3` → `lora-3-opd` → `lora-4-toolfix-v2` → `lora-5-grounding`）和每一步合并结果的分片 md5（`SHA_md5.txt`）。
+前四步的 LoRA（`lora-1-sft` → `lora-2-dpo-v3` → `lora-3-opd` → `lora-4-toolfix-v2`）在 Release `models-2026-11-14`，第 5 步 `lora-5-grounding` 和五步合并结果的分片 md5（`SHA_md5.txt`）在 `models-2026-11-20`。
 `training/qwen35/rebuild_from_release.sh` 下载这些 LoRA 和 Qwen3.5-9B 基座，按顺序合并，每合并一步就核对该步的 md5；`CLEAN=1` 时边合边删中间结果（峰值磁盘约 40GB）。
 md5 是在 transformers 5.20.2 / peft 0.18.1 / torch 2.14 下合并得到的；其他版本合并出的权重数值相同，但分片可能不逐字节一致，此时以 `remap_lora_for_vl.py --check` 的逐元素核对为准。
 
