@@ -157,30 +157,63 @@ class KnowledgeBase:
         for d in drugs:
             std = self.normalize(d.strip(), "drug")
             names.append(std if std else d)
-        pairs = []
+        from .interactions import _resolve, enabled, label_pair
+        pairs, checked = [], []
         for a, b in combinations(dict.fromkeys(names), 2):
             note = _INTERACTION_NOTES.get(frozenset({a, b}))
             listed = b in self.drugs.get(a, {}).get("interactions", []) or a in self.drugs.get(b, {}).get("interactions", [])
             if note or listed:
                 sev, desc = note or ("unknown", "说明书提示存在相互作用")
                 pairs.append({"drugs": [a, b], "severity": sev, "description": desc})
-        unknown = [n for n in names if n not in self.drugs and n != "华法林" and n != "甲氨蝶呤"]
-        return {"drugs": names, "interactions": pairs, "unknown_drugs": unknown,
-                "advice": "存在相互作用时请勿自行合用，咨询医生或药师" if pairs else "知识库未发现已知相互作用，但不代表绝对安全"}
+                continue
+            lp = label_pair(a, b) if enabled() else None     # 精选库没有 → 查两份说明书的相互作用段落里有没有提到对方
+            if lp and lp["found"]:
+                pairs.append({"drugs": [a, b], "severity": "label",
+                              "description": "说明书原文：" + lp["found"][0]["text"],
+                              "label_evidence": lp["found"]})
+            elif lp:
+                checked += [n for n in lp["labels_checked"] if n not in checked]
+        known = set(self.drugs) | {"华法林", "甲氨蝶呤"}
+        unknown = [n for n in names if n not in known and not (enabled() and _resolve(n))]
+        out = {"drugs": names, "interactions": pairs, "unknown_drugs": unknown,
+               "advice": "存在相互作用时请勿自行合用，咨询医生或药师" if pairs else "知识库未发现已知相互作用，但不代表绝对安全"}
+        if checked and not pairs:
+            out["labels_checked"] = checked
+            out["advice"] = (f"已查{'、'.join(checked)}说明书的相互作用部分，没有提到与另一药合用的问题；"
+                             "这不代表绝对安全，合用前请咨询医生或药师")
+        return out
+
+    def _wiki_drugs(self, q: str, aspect: str | None, always: bool) -> dict[str, Any]:
+        """医药 Wiki 疾病页：说明书适应症写明了这个病的药（经模型复核）。精选指南只在问用药时附上，
+        免得把药名清单塞进饮食 / 运动类问题。MEDAGENT_WIKI_TOOLS=0 或 MEDAGENT_WIKI=0 关闭。"""
+        from .interactions import enabled
+        from .wiki import DRUG_CHOICE_INTENT, load_wiki
+        if not enabled() or not (always or DRUG_CHOICE_INTENT.search(f"{q} {aspect or ''}") or "药" in (aspect or "")):
+            return {}
+        w = load_wiki()
+        dd = w.disease_drugs(q) if w else None
+        return {"label_drugs": dd} if dd else {}
 
     def search_guideline(self, topic: str, aspect: str | None = None) -> dict[str, Any]:
         q = topic.strip()
+        asp = {"aspect": aspect} if aspect else {}
         for key, val in self.guidelines.items():
             if key in q:
-                return {"found": True, **val, **({"aspect": aspect} if aspect else {})}
+                return {"found": True, **val, **asp, **self._wiki_drugs(key, aspect, False)}
         std = self.normalize(q, "disease")
         if std in self.guidelines:
-            return {"found": True, **self.guidelines[std], **({"aspect": aspect} if aspect else {})}
+            return {"found": True, **self.guidelines[std], **asp, **self._wiki_drugs(std, aspect, False)}
         from .ext import load_ext
         ext = load_ext()
         ext_hit = ext.find(q, "disease") if ext else None
         if ext_hit:
-            return {**ext.disease_entry(ext_hit[0]), **({"aspect": aspect} if aspect else {})}
+            return {**ext.disease_entry(ext_hit[0]), **asp, **self._wiki_drugs(q, aspect, True)}
+        wd = self._wiki_drugs(q, aspect, True)       # Wikidata 没有、医学知识图谱有的病名（糖尿病之外的常见病多在这里）
+        if wd:
+            dd = wd["label_drugs"]
+            return {"found": True, "topic": dd["disease"], "content": f"知识库没有「{dd['disease']}」的临床指南；"
+                    "下面是说明书适应症写明了本病的药，选药须由医生根据病情决定。", **asp, **wd,
+                    "source": "医药 Wiki（说明书适应症，未经审核）", "kb_tier": "wiki", "reviewed": False}
         return {"found": False, "topic": topic, "error": f"知识库中未找到「{topic}」相关指南"}
 
     def documents(self, include_ext: bool = True) -> list[dict[str, str]]:

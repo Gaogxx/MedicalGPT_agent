@@ -25,6 +25,8 @@ updated: "2026-11-19"
 
 <sub>来源：说明书摘录（Huatuo 百科问答「维生素C片」（verbatim））</sub>
 
+相关疾病：[休克](../diseases/休克.md)、[损害](../diseases/损害.md)、[肝硬化](../diseases/肝硬化.md)、[坏血病](../diseases/坏血病.md)、[传染病](../diseases/传染病.md)、[紫癜](../diseases/紫癜.md)、[克山病](../diseases/克山病.md)、[心源性休克](../diseases/心源性休克.md)、[肝炎](../diseases/肝炎.md)
+
 ## 用法用量
 
 （维生素C泡腾片（鲜橙口味））用温水或冷水溶解后服用，溶解后成为一杯鲜甜味美的饮品。成人，一日1-2片，一日内服用不得超过2片;儿童一日半片。

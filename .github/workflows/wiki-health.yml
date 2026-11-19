@@ -1,0 +1,26 @@
+name: wiki-health
+# 医药 Wiki 健康检查：体检、页面与编译结果一致（防手改）、时效、复核覆盖率、隔离区、审核签字。只读，不改仓库。
+on:
+  schedule:
+    - cron: "0 1 * * 1"        # 每周一 01:00 UTC
+  push:
+    paths: ["medagent/knowledge/**"]
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: wiki_check check
+        env:
+          MEDAGENT_NO_DOTENV: "1"
+        run: python -m medagent.knowledge.wiki_check check
+      - name: upload health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wiki-health
+          path: medagent/knowledge/wiki/health.md

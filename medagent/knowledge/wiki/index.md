@@ -2,7 +2,7 @@
 
 > 未经医生 / 药师审核，仅供参考；剂量以所用药品的说明书或医嘱为准。
 
-药品 1323 页（三项齐全 651）、疾病 344 页；编译于 2026-11-19。页面约定见 [SCHEMA.md](SCHEMA.md)，更新记录见 [log.md](log.md)，缺口见 [gaps.md](gaps.md)。
+药品 1323 页（三项齐全 566）、疾病 661 页；编译于 2026-11-19。页面约定见 [SCHEMA.md](SCHEMA.md)，更新记录见 [log.md](log.md)，缺口见 [gaps.md](gaps.md)。
 
 ## 药品（按 ATC 大类）
 
@@ -72,82 +72,102 @@
 
 [腺鼠疫](diseases/腺鼠疫.md)
 
-### A（34）
+### A（39）
 
-[伤寒](diseases/伤寒.md)、[克里米亚-刚果出血热](diseases/克里米亚-刚果出血热.md)、[兔热病](diseases/兔热病.md)、[发热伴血小板减少综合征](diseases/发热伴血小板减少综合征.md)、[委内瑞拉马脑炎病毒](diseases/委内瑞拉马脑炎病毒.md)、[弯曲菌病](diseases/弯曲菌病.md)、[战壕热](diseases/战壕热.md)、[披衣菌感染](diseases/披衣菌感染.md)、[梅毒性脊髓炎](diseases/梅毒性脊髓炎.md)、[流行性斑疹伤寒](diseases/流行性斑疹伤寒.md)、[玻利维亚出血热](diseases/玻利维亚出血热.md)、[球菌性脑膜炎](diseases/球菌性脑膜炎.md)、[生殖器疱疹](diseases/生殖器疱疹.md)、[痢疾](diseases/痢疾.md)、[白喉](diseases/白喉.md)、[百日咳](diseases/百日咳.md)、[立克次氏体病](diseases/立克次氏体病.md)、[等孢子虫病](diseases/等孢子虫病.md)、[类丹毒](diseases/类丹毒.md)、[细菌感染疾病](diseases/细菌感染疾病.md)、[结核病](diseases/结核病.md)、[肉毒杆菌中毒](diseases/肉毒杆菌中毒.md)、[脓毒症](diseases/脓毒症.md)、[艰难拟梭菌感染](diseases/艰难拟梭菌感染.md)、[莱姆病](diseases/莱姆病.md)、[落矶山斑点热](diseases/落矶山斑点热.md)、[蒲东热](diseases/蒲东热.md)、[阿根廷出血热](diseases/阿根廷出血热.md)、[隐孢子虫病](diseases/隐孢子虫病.md)、[非性病地方性梅毒](diseases/非性病地方性梅毒.md)、[鸟型分枝杆菌](diseases/鸟型分枝杆菌.md)、[鼠型斑疹伤寒](diseases/鼠型斑疹伤寒.md)、[鼠毒症](diseases/鼠毒症.md)、[鼠疫](diseases/鼠疫.md)
+[伤寒](diseases/伤寒.md)、[克里米亚-刚果出血热](diseases/克里米亚-刚果出血热.md)、[兔热病](diseases/兔热病.md)、[发热伴血小板减少综合征](diseases/发热伴血小板减少综合征.md)、[委内瑞拉马脑炎病毒](diseases/委内瑞拉马脑炎病毒.md)、[弯曲菌病](diseases/弯曲菌病.md)、[战壕热](diseases/战壕热.md)、[披衣菌感染](diseases/披衣菌感染.md)、[梅毒性脊髓炎](diseases/梅毒性脊髓炎.md)、[流感嗜血杆菌](diseases/流感嗜血杆菌.md)、[流行性斑疹伤寒](diseases/流行性斑疹伤寒.md)、[玻利维亚出血热](diseases/玻利维亚出血热.md)、[球菌性脑膜炎](diseases/球菌性脑膜炎.md)、[生殖器疱疹](diseases/生殖器疱疹.md)、[痢疾](diseases/痢疾.md)、[白喉](diseases/白喉.md)、[百日咳](diseases/百日咳.md)、[皮疹](diseases/皮疹.md)、[立克次氏体病](diseases/立克次氏体病.md)、[等孢子虫病](diseases/等孢子虫病.md)、[类丹毒](diseases/类丹毒.md)、[细菌感染疾病](diseases/细菌感染疾病.md)、[结核病](diseases/结核病.md)、[肉毒杆菌中毒](diseases/肉毒杆菌中毒.md)、[脑炎](diseases/脑炎.md)、[脓毒症](diseases/脓毒症.md)、[艰难拟梭菌感染](diseases/艰难拟梭菌感染.md)、[莱姆病](diseases/莱姆病.md)、[菌血症](diseases/菌血症.md)、[落矶山斑点热](diseases/落矶山斑点热.md)、[蒲东热](diseases/蒲东热.md)、[螺旋体感染](diseases/螺旋体感染.md)、[阿根廷出血热](diseases/阿根廷出血热.md)、[隐孢子虫病](diseases/隐孢子虫病.md)、[非性病地方性梅毒](diseases/非性病地方性梅毒.md)、[鸟型分枝杆菌](diseases/鸟型分枝杆菌.md)、[鼠型斑疹伤寒](diseases/鼠型斑疹伤寒.md)、[鼠毒症](diseases/鼠毒症.md)、[鼠疫](diseases/鼠疫.md)
 
-### B（25）
+### B（28）
 
-[乙型肝炎](diseases/乙型肝炎.md)、[体癣](diseases/体癣.md)、[假单胞菌属感染](diseases/假单胞菌属感染.md)、[囊虫病](diseases/囊虫病.md)、[带状疱疹](diseases/带状疱疹.md)、[幽门螺杆菌感染](diseases/幽门螺杆菌感染.md)、[弓虫症](diseases/弓虫症.md)、[念珠菌性外阴阴道炎](diseases/念珠菌性外阴阴道炎.md)、[急性出血性结膜炎](diseases/急性出血性结膜炎.md)、[戊型肝炎](diseases/戊型肝炎.md)、[水痘](diseases/水痘.md)、[球孢子菌病](diseases/球孢子菌病.md)、[甲癣](diseases/甲癣.md)、[疥疮](diseases/疥疮.md)、[眼部疱疹](diseases/眼部疱疹.md)、[福氏内格里阿米巴脑膜脑炎](diseases/福氏内格里阿米巴脑膜脑炎.md)、[组织胞浆菌病](diseases/组织胞浆菌病.md)、[细菌性阴道病](diseases/细菌性阴道病.md)、[股癣](diseases/股癣.md)、[脑型疟疾](diseases/脑型疟疾.md)、[艾滋病](diseases/艾滋病.md)、[花斑癣](diseases/花斑癣.md)、[钩虫症](diseases/钩虫症.md)、[隐球菌病](diseases/隐球菌病.md)、[黑热病（内脏利什曼病）](diseases/黑热病_内脏利什曼病.md)
+[乙型肝炎](diseases/乙型肝炎.md)、[体癣](diseases/体癣.md)、[假单胞菌属感染](diseases/假单胞菌属感染.md)、[唇疮](diseases/唇疮.md)、[囊虫病](diseases/囊虫病.md)、[带状疱疹](diseases/带状疱疹.md)、[幽门螺杆菌感染](diseases/幽门螺杆菌感染.md)、[弓虫症](diseases/弓虫症.md)、[念珠菌性外阴阴道炎](diseases/念珠菌性外阴阴道炎.md)、[急性出血性结膜炎](diseases/急性出血性结膜炎.md)、[戊型肝炎](diseases/戊型肝炎.md)、[水痘](diseases/水痘.md)、[球孢子菌病](diseases/球孢子菌病.md)、[甲癣](diseases/甲癣.md)、[疥疮](diseases/疥疮.md)、[病毒性肝炎](diseases/病毒性肝炎.md)、[眼部疱疹](diseases/眼部疱疹.md)、[福氏内格里阿米巴脑膜脑炎](diseases/福氏内格里阿米巴脑膜脑炎.md)、[组织胞浆菌病](diseases/组织胞浆菌病.md)、[细菌性阴道病](diseases/细菌性阴道病.md)、[股癣](diseases/股癣.md)、[脑型疟疾](diseases/脑型疟疾.md)、[艾滋病](diseases/艾滋病.md)、[花斑癣](diseases/花斑癣.md)、[血吸虫病](diseases/血吸虫病.md)、[钩虫症](diseases/钩虫症.md)、[隐球菌病](diseases/隐球菌病.md)、[黑热病（内脏利什曼病）](diseases/黑热病_内脏利什曼病.md)
 
-### C（44）
+### C（51）
 
-[B细胞慢性淋巴性白血病](diseases/B细胞慢性淋巴性白血病.md)、[B细胞淋巴瘤](diseases/B细胞淋巴瘤.md)、[Erdheim–Chester病](diseases/Erdheim–Chester病.md)、[T细胞幼淋巴细胞性白血病](diseases/T细胞幼淋巴细胞性白血病.md)、[乳癌](diseases/乳癌.md)、[伯基特氏淋巴瘤](diseases/伯基特氏淋巴瘤.md)、[前列腺癌](diseases/前列腺癌.md)、[卡波西氏肉瘤](diseases/卡波西氏肉瘤.md)、[基底细胞癌](diseases/基底细胞癌.md)、[大肠癌](diseases/大肠癌.md)、[头颈癌](diseases/头颈癌.md)、[家族性腺瘤性息肉病](diseases/家族性腺瘤性息肉病.md)、[尤因肉瘤](diseases/尤因肉瘤.md)、[巨球蛋白血症](diseases/巨球蛋白血症.md)、[弥漫大B细胞淋巴瘤](diseases/弥漫大B细胞淋巴瘤.md)、[急性白血病](diseases/急性白血病.md)、[慢性粒细胞性白血病](diseases/慢性粒细胞性白血病.md)、[未分化甲状腺癌](diseases/未分化甲状腺癌.md)、[梅克尔细胞瘤](diseases/梅克尔细胞瘤.md)、[横纹肌肉瘤](diseases/横纹肌肉瘤.md)、[淋巴样白血病](diseases/淋巴样白血病.md)、[淋巴瘤](diseases/淋巴瘤.md)、[混合细胞型霍奇金淋巴瘤](diseases/混合细胞型霍奇金淋巴瘤.md)、[甲状腺髓质癌](diseases/甲状腺髓质癌.md)、[癌症](diseases/癌症.md)、[癌瘤](diseases/癌瘤.md)、[皮肤T细胞淋巴瘤](diseases/皮肤T细胞淋巴瘤.md)、[皮肤癌](diseases/皮肤癌.md)、[皮肤纤维肉瘤](diseases/皮肤纤维肉瘤.md)、[纤维肉瘤](diseases/纤维肉瘤.md)、[组织细胞增多症](diseases/组织细胞增多症.md)、[肝脏上皮细胞肿瘤](diseases/肝脏上皮细胞肿瘤.md)、[肾细胞癌](diseases/肾细胞癌.md)、[胃肠道基质肿瘤](diseases/胃肠道基质肿瘤.md)、[胰岛素瘤](diseases/胰岛素瘤.md)、[胶质母细胞瘤](diseases/胶质母细胞瘤.md)、[舌岩](diseases/舌岩.md)、[莱特勒-西韦病](diseases/莱特勒-西韦病.md)、[被套区细胞淋巴瘤](diseases/被套区细胞淋巴瘤.md)、[视网膜母细胞瘤](diseases/视网膜母细胞瘤.md)、[间变性星形细胞瘤](diseases/间变性星形细胞瘤.md)、[非霍奇金氏淋巴瘤](diseases/非霍奇金氏淋巴瘤.md)、[骨肉瘤](diseases/骨肉瘤.md)、[黑色素瘤](diseases/黑色素瘤.md)
+[B细胞慢性淋巴性白血病](diseases/B细胞慢性淋巴性白血病.md)、[B细胞淋巴瘤](diseases/B细胞淋巴瘤.md)、[Erdheim–Chester病](diseases/Erdheim–Chester病.md)、[T细胞幼淋巴细胞性白血病](diseases/T细胞幼淋巴细胞性白血病.md)、[乳癌](diseases/乳癌.md)、[伯基特氏淋巴瘤](diseases/伯基特氏淋巴瘤.md)、[前列腺癌](diseases/前列腺癌.md)、[卡波西氏肉瘤](diseases/卡波西氏肉瘤.md)、[基底细胞癌](diseases/基底细胞癌.md)、[大肠癌](diseases/大肠癌.md)、[头颈癌](diseases/头颈癌.md)、[室管膜瘤](diseases/室管膜瘤.md)、[家族性腺瘤性息肉病](diseases/家族性腺瘤性息肉病.md)、[尤因肉瘤](diseases/尤因肉瘤.md)、[巨球蛋白血症](diseases/巨球蛋白血症.md)、[平滑肌肉瘤](diseases/平滑肌肉瘤.md)、[弥漫大B细胞淋巴瘤](diseases/弥漫大B细胞淋巴瘤.md)、[急性白血病](diseases/急性白血病.md)、[慢性粒细胞性白血病](diseases/慢性粒细胞性白血病.md)、[星形细胞瘤](diseases/星形细胞瘤.md)、[未分化甲状腺癌](diseases/未分化甲状腺癌.md)、[梅克尔细胞瘤](diseases/梅克尔细胞瘤.md)、[横纹肌肉瘤](diseases/横纹肌肉瘤.md)、[淋巴样白血病](diseases/淋巴样白血病.md)、[淋巴瘤](diseases/淋巴瘤.md)、[混合细胞型霍奇金淋巴瘤](diseases/混合细胞型霍奇金淋巴瘤.md)、[滤泡性淋巴瘤](diseases/滤泡性淋巴瘤.md)、[甲状腺髓质癌](diseases/甲状腺髓质癌.md)、[癌症](diseases/癌症.md)、[癌瘤](diseases/癌瘤.md)、[皮肤T细胞淋巴瘤](diseases/皮肤T细胞淋巴瘤.md)、[皮肤癌](diseases/皮肤癌.md)、[皮肤纤维肉瘤](diseases/皮肤纤维肉瘤.md)、[纤维肉瘤](diseases/纤维肉瘤.md)、[组织细胞增多症](diseases/组织细胞增多症.md)、[肝脏上皮细胞肿瘤](diseases/肝脏上皮细胞肿瘤.md)、[肺癌](diseases/肺癌.md)、[肾细胞癌](diseases/肾细胞癌.md)、[胃肠道基质肿瘤](diseases/胃肠道基质肿瘤.md)、[胰岛素瘤](diseases/胰岛素瘤.md)、[胶质母细胞瘤](diseases/胶质母细胞瘤.md)、[舌岩](diseases/舌岩.md)、[莱特勒-西韦病](diseases/莱特勒-西韦病.md)、[被套区细胞淋巴瘤](diseases/被套区细胞淋巴瘤.md)、[视网膜母细胞瘤](diseases/视网膜母细胞瘤.md)、[费城染色体](diseases/费城染色体.md)、[间变性星形细胞瘤](diseases/间变性星形细胞瘤.md)、[非霍奇金氏淋巴瘤](diseases/非霍奇金氏淋巴瘤.md)、[骨肉瘤](diseases/骨肉瘤.md)、[骨转移](diseases/骨转移.md)、[黑色素瘤](diseases/黑色素瘤.md)
 
-### D（16）
+### D（24）
 
-[低凝血酶原血症](diseases/低凝血酶原血症.md)、[冷凝球蛋白血症](diseases/冷凝球蛋白血症.md)、[卡斯尔曼氏病](diseases/卡斯尔曼氏病.md)、[叶酸缺乏症](diseases/叶酸缺乏症.md)、[嗜酸性粒细胞增多症](diseases/嗜酸性粒细胞增多症.md)、[嗜铬细胞瘤](diseases/嗜铬细胞瘤.md)、[地中海贫血](diseases/地中海贫血.md)、[大球性贫血](diseases/大球性贫血.md)、[巨球性贫血](diseases/巨球性贫血.md)、[平滑肌瘤](diseases/平滑肌瘤.md)、[泌乳素瘤](diseases/泌乳素瘤.md)、[纯红细胞再生障碍性贫血](diseases/纯红细胞再生障碍性贫血.md)、[缺铁性贫血](diseases/缺铁性贫血.md)、[获得性血友病](diseases/获得性血友病.md)、[血小板增多症](diseases/血小板增多症.md)、[骨髓增生异常综合征](diseases/骨髓增生异常综合征.md)
+[低凝血酶原血症](diseases/低凝血酶原血症.md)、[免疫缺陷](diseases/免疫缺陷.md)、[冷凝球蛋白血症](diseases/冷凝球蛋白血症.md)、[卡斯尔曼氏病](diseases/卡斯尔曼氏病.md)、[叶酸缺乏症](diseases/叶酸缺乏症.md)、[嗜酸性粒细胞增多症](diseases/嗜酸性粒细胞增多症.md)、[嗜酸性肉芽肿](diseases/嗜酸性肉芽肿.md)、[嗜铬细胞瘤](diseases/嗜铬细胞瘤.md)、[地中海贫血](diseases/地中海贫血.md)、[垂体腺瘤](diseases/垂体腺瘤.md)、[多发性内分泌系统细胞增生](diseases/多发性内分泌系统细胞增生.md)、[大球性贫血](diseases/大球性贫血.md)、[巨球性贫血](diseases/巨球性贫血.md)、[平滑肌瘤](diseases/平滑肌瘤.md)、[泌乳素瘤](diseases/泌乳素瘤.md)、[纯红细胞再生障碍性贫血](diseases/纯红细胞再生障碍性贫血.md)、[缺铁性贫血](diseases/缺铁性贫血.md)、[肝素诱导的血小板减少症](diseases/肝素诱导的血小板减少症.md)、[腺瘤](diseases/腺瘤.md)、[获得性血友病](diseases/获得性血友病.md)、[血友病](diseases/血友病.md)、[血小板增多症](diseases/血小板增多症.md)、[遗传性血管水肿](diseases/遗传性血管水肿.md)、[骨髓增生异常综合征](diseases/骨髓增生异常综合征.md)
 
-### E（25）
+### E（37）
 
-[1型糖尿病](diseases/1型糖尿病.md)、[2型糖尿病](diseases/2型糖尿病.md)、[中枢性尿崩症](diseases/中枢性尿崩症.md)、[低钾血症](diseases/低钾血症.md)、[卵巢疾病](diseases/卵巢疾病.md)、[囊肿性纤维化](diseases/囊肿性纤维化.md)、[多囊卵巢综合症](diseases/多囊卵巢综合症.md)、[急性间歇性紫质症](diseases/急性间歇性紫质症.md)、[性腺功能低下症](diseases/性腺功能低下症.md)、[抗利尿激素分泌失调症候群](diseases/抗利尿激素分泌失调症候群.md)、[次发性副甲状腺机能亢进](diseases/次发性副甲状腺机能亢进.md)、[甲状腺机能低下症](diseases/甲状腺机能低下症.md)、[真性早熟症](diseases/真性早熟症.md)、[类癌症候群](diseases/类癌症候群.md)、[糖尿病肾病](diseases/糖尿病肾病.md)、[糙皮病](diseases/糙皮病.md)、[维生素D缺乏症](diseases/维生素D缺乏症.md)、[肢端肥大症](diseases/肢端肥大症.md)、[肾上腺皮质功能亢进](diseases/肾上腺皮质功能亢进.md)、[脚气病](diseases/脚气病.md)、[血脂异常](diseases/血脂异常.md)、[遗传性代谢缺陷](diseases/遗传性代谢缺陷.md)、[高三酸甘油脂血症](diseases/高三酸甘油脂血症.md)、[高尿酸血症](diseases/高尿酸血症.md)、[高胆固醇](diseases/高胆固醇.md)
+[1型糖尿病](diseases/1型糖尿病.md)、[2型糖尿病](diseases/2型糖尿病.md)、[中枢性尿崩症](diseases/中枢性尿崩症.md)、[低血磷](diseases/低血磷.md)、[低钙血症](diseases/低钙血症.md)、[低钾血症](diseases/低钾血症.md)、[克山病](diseases/克山病.md)、[卵巢疾病](diseases/卵巢疾病.md)、[囊肿性纤维化](diseases/囊肿性纤维化.md)、[坏血病](diseases/坏血病.md)、[多囊卵巢综合症](diseases/多囊卵巢综合症.md)、[急性间歇性紫质症](diseases/急性间歇性紫质症.md)、[性腺功能低下症](diseases/性腺功能低下症.md)、[抗利尿激素分泌失调症候群](diseases/抗利尿激素分泌失调症候群.md)、[次发性副甲状腺机能亢进](diseases/次发性副甲状腺机能亢进.md)、[甲状腺机能低下症](diseases/甲状腺机能低下症.md)、[真性早熟症](diseases/真性早熟症.md)、[类癌症候群](diseases/类癌症候群.md)、[糖尿病肾病](diseases/糖尿病肾病.md)、[糙皮病](diseases/糙皮病.md)、[维生素D缺乏症](diseases/维生素D缺乏症.md)、[缺铁](diseases/缺铁.md)、[肢端肥大症](diseases/肢端肥大症.md)、[肾上腺皮质功能不全](diseases/肾上腺皮质功能不全.md)、[肾上腺皮质功能亢进](diseases/肾上腺皮质功能亢进.md)、[脚气病](diseases/脚气病.md)、[营养不良](diseases/营养不良.md)、[血脂异常](diseases/血脂异常.md)、[超重](diseases/超重.md)、[遗传性代谢缺陷](diseases/遗传性代谢缺陷.md)、[酸中毒](diseases/酸中毒.md)、[高三酸甘油脂血症](diseases/高三酸甘油脂血症.md)、[高尿酸血症](diseases/高尿酸血症.md)、[高胆固醇](diseases/高胆固醇.md)、[高脂血症](diseases/高脂血症.md)、[高血氨](diseases/高血氨.md)、[高钾血症](diseases/高钾血症.md)
 
-### F（32）
+### F（42）
 
-[亚斯伯格症候群](diseases/亚斯伯格症候群.md)、[人格障碍](diseases/人格障碍.md)、[分裂样人格障碍](diseases/分裂样人格障碍.md)、[创伤后应激障碍](diseases/创伤后应激障碍.md)、[勃起功能障碍](diseases/勃起功能障碍.md)、[双相障碍](diseases/双相障碍.md)、[场所恐惧症](diseases/场所恐惧症.md)、[夜遗尿](diseases/夜遗尿.md)、[失智症](diseases/失智症.md)、[失眠](diseases/失眠.md)、[妥瑞症](diseases/妥瑞症.md)、[对立反抗症](diseases/对立反抗症.md)、[广泛性发育障碍](diseases/广泛性发育障碍.md)、[强迫症](diseases/强迫症.md)、[心境障碍](diseases/心境障碍.md)、[惊恐症](diseases/惊恐症.md)、[早发性阿兹海默氏症](diseases/早发性阿兹海默氏症.md)、[注意缺陷多动障碍](diseases/注意缺陷多动障碍.md)、[焦虑](diseases/焦虑.md)、[物质使用疾患](diseases/物质使用疾患.md)、[社交恐惧症](diseases/社交恐惧症.md)、[神经性贪食](diseases/神经性贪食.md)、[类精神分裂症](diseases/类精神分裂症.md)、[精神分裂症](diseases/精神分裂症.md)、[紧张症](diseases/紧张症.md)、[自闭症](diseases/自闭症.md)、[药物成瘾](diseases/药物成瘾.md)、[药物滥用](diseases/药物滥用.md)、[谵妄](diseases/谵妄.md)、[边缘型人格障碍](diseases/边缘型人格障碍.md)、[进食障碍](diseases/进食障碍.md)、[酒精戒断症候群](diseases/酒精戒断症候群.md)
+[亚斯伯格症候群](diseases/亚斯伯格症候群.md)、[人格障碍](diseases/人格障碍.md)、[内源性抑郁](diseases/内源性抑郁.md)、[分裂样人格障碍](diseases/分裂样人格障碍.md)、[创伤后应激障碍](diseases/创伤后应激障碍.md)、[勃起功能障碍](diseases/勃起功能障碍.md)、[双相障碍](diseases/双相障碍.md)、[变性](diseases/变性.md)、[场所恐惧症](diseases/场所恐惧症.md)、[多动障碍](diseases/多动障碍.md)、[夜遗尿](diseases/夜遗尿.md)、[失智症](diseases/失智症.md)、[失眠](diseases/失眠.md)、[妥瑞症](diseases/妥瑞症.md)、[对立反抗症](diseases/对立反抗症.md)、[广泛性发育障碍](diseases/广泛性发育障碍.md)、[强迫症](diseases/强迫症.md)、[心境障碍](diseases/心境障碍.md)、[忧郁症发作](diseases/忧郁症发作.md)、[惊恐症](diseases/惊恐症.md)、[早发性阿兹海默氏症](diseases/早发性阿兹海默氏症.md)、[注意缺陷多动障碍](diseases/注意缺陷多动障碍.md)、[焦虑](diseases/焦虑.md)、[物质使用疾患](diseases/物质使用疾患.md)、[社交恐惧症](diseases/社交恐惧症.md)、[神经性贪食](diseases/神经性贪食.md)、[神经症](diseases/神经症.md)、[类精神分裂症](diseases/类精神分裂症.md)、[精神分裂症](diseases/精神分裂症.md)、[精神障碍](diseases/精神障碍.md)、[紧张症](diseases/紧张症.md)、[自闭症](diseases/自闭症.md)、[药物成瘾](diseases/药物成瘾.md)、[药物滥用](diseases/药物滥用.md)、[谵妄](diseases/谵妄.md)、[躁狂](diseases/躁狂.md)、[边缘型人格障碍](diseases/边缘型人格障碍.md)、[过度日间嗜睡](diseases/过度日间嗜睡.md)、[进食障碍](diseases/进食障碍.md)、[酒精中毒](diseases/酒精中毒.md)、[酒精依赖](diseases/酒精依赖.md)、[酒精戒断症候群](diseases/酒精戒断症候群.md)
 
-### G（23）
+### G（34）
 
-[不宁腿综合症](diseases/不宁腿综合症.md)、[亨丁顿舞蹈症](diseases/亨丁顿舞蹈症.md)、[偏头痛](diseases/偏头痛.md)、[先天性肌强直](diseases/先天性肌强直.md)、[发作性嗜睡病](diseases/发作性嗜睡病.md)、[周围神经病](diseases/周围神经病.md)、[局灶性抽搐](diseases/局灶性抽搐.md)、[帕金森综合征](diseases/帕金森综合征.md)、[强直－阵挛性发作](diseases/强直－阵挛性发作.md)、[抗精神药物恶性症候群](diseases/抗精神药物恶性症候群.md)、[时差问题](diseases/时差问题.md)、[灼热痛](diseases/灼热痛.md)、[炎性肌病](diseases/炎性肌病.md)、[猝倒](diseases/猝倒.md)、[癫痫重积状态](diseases/癫痫重积状态.md)、[睡眠障碍](diseases/睡眠障碍.md)、[紧缩型头痛](diseases/紧缩型头痛.md)、[脊髓损伤](diseases/脊髓损伤.md)、[脑水肿](diseases/脑水肿.md)、[脑缺血](diseases/脑缺血.md)、[脑颞叶癫痫症](diseases/脑颞叶癫痫症.md)、[贯穿性脊髓炎](diseases/贯穿性脊髓炎.md)、[迟发性运动障碍](diseases/迟发性运动障碍.md)
+[不宁腿综合症](diseases/不宁腿综合症.md)、[亨丁顿舞蹈症](diseases/亨丁顿舞蹈症.md)、[偏头痛](diseases/偏头痛.md)、[先兆](diseases/先兆.md)、[先天性肌强直](diseases/先天性肌强直.md)、[全身性的抽搐](diseases/全身性的抽搐.md)、[发作性嗜睡病](diseases/发作性嗜睡病.md)、[周围神经病](diseases/周围神经病.md)、[失神性癫痫发作](diseases/失神性癫痫发作.md)、[小脑共济失调](diseases/小脑共济失调.md)、[局灶性抽搐](diseases/局灶性抽搐.md)、[帕金森综合征](diseases/帕金森综合征.md)、[强直－阵挛性发作](diseases/强直－阵挛性发作.md)、[抗精神药物恶性症候群](diseases/抗精神药物恶性症候群.md)、[时差问题](diseases/时差问题.md)、[灼热痛](diseases/灼热痛.md)、[炎性肌病](diseases/炎性肌病.md)、[猝倒](diseases/猝倒.md)、[癫痫发作](diseases/癫痫发作.md)、[癫痫重积状态](diseases/癫痫重积状态.md)、[睡眠呼吸暂停](diseases/睡眠呼吸暂停.md)、[睡眠障碍](diseases/睡眠障碍.md)、[神经痛](diseases/神经痛.md)、[紧缩型头痛](diseases/紧缩型头痛.md)、[脊髓性肌萎缩](diseases/脊髓性肌萎缩.md)、[脊髓损伤](diseases/脊髓损伤.md)、[脊髓炎](diseases/脊髓炎.md)、[脑水肿](diseases/脑水肿.md)、[脑缺血](diseases/脑缺血.md)、[脑颞叶癫痫症](diseases/脑颞叶癫痫症.md)、[舞蹈病](diseases/舞蹈病.md)、[贯穿性脊髓炎](diseases/贯穿性脊髓炎.md)、[运动障碍](diseases/运动障碍.md)、[迟发性运动障碍](diseases/迟发性运动障碍.md)
 
-### H（9）
+### H（10）
 
-[外耳炎](diseases/外耳炎.md)、[恐光症](diseases/恐光症.md)、[瞳孔缩小](diseases/瞳孔缩小.md)、[糖尿病视网膜病变](diseases/糖尿病视网膜病变.md)、[结膜炎](diseases/结膜炎.md)、[虹膜炎](diseases/虹膜炎.md)、[闭角型青光眼](diseases/闭角型青光眼.md)、[青光眼](diseases/青光眼.md)、[黄斑水肿](diseases/黄斑水肿.md)
+[外耳炎](diseases/外耳炎.md)、[恐光症](diseases/恐光症.md)、[散瞳](diseases/散瞳.md)、[瞳孔缩小](diseases/瞳孔缩小.md)、[糖尿病视网膜病变](diseases/糖尿病视网膜病变.md)、[结膜炎](diseases/结膜炎.md)、[虹膜炎](diseases/虹膜炎.md)、[闭角型青光眼](diseases/闭角型青光眼.md)、[青光眼](diseases/青光眼.md)、[黄斑水肿](diseases/黄斑水肿.md)
 
-### I（24）
+### I（34）
 
-[低血压](diseases/低血压.md)、[姿位性低血压](diseases/姿位性低血压.md)、[心内膜炎](diseases/心内膜炎.md)、[心包炎](diseases/心包炎.md)、[心室心搏过速](diseases/心室心搏过速.md)、[心室颤动](diseases/心室颤动.md)、[心律不整](diseases/心律不整.md)、[心房扑动](diseases/心房扑动.md)、[心绞痛](diseases/心绞痛.md)、[心肌梗死](diseases/心肌梗死.md)、[心肌病变](diseases/心肌病变.md)、[急性冠状动脉综合症](diseases/急性冠状动脉综合症.md)、[感染性心内膜炎](diseases/感染性心内膜炎.md)、[无症状中风](diseases/无症状中风.md)、[缺血性心脏病](diseases/缺血性心脏病.md)、[肺动脉瓣狭窄](diseases/肺动脉瓣狭窄.md)、[脑内出血](diseases/脑内出血.md)、[蛛网膜下腔出血](diseases/蛛网膜下腔出血.md)、[血栓形成](diseases/血栓形成.md)、[长QT症](diseases/长QT症.md)、[阵发性室上性心搏过速](diseases/阵发性室上性心搏过速.md)、[颈动脉狭窄](diseases/颈动脉狭窄.md)、[高血压](diseases/高血压.md)、[高血压急症](diseases/高血压急症.md)
+[传染病](diseases/传染病.md)、[低血压](diseases/低血压.md)、[动脉炎](diseases/动脉炎.md)、[动脉瘤](diseases/动脉瘤.md)、[姿位性低血压](diseases/姿位性低血压.md)、[心内膜炎](diseases/心内膜炎.md)、[心包炎](diseases/心包炎.md)、[心室心搏过速](diseases/心室心搏过速.md)、[心室颤动](diseases/心室颤动.md)、[心律不整](diseases/心律不整.md)、[心房扑动](diseases/心房扑动.md)、[心绞痛](diseases/心绞痛.md)、[心肌梗死](diseases/心肌梗死.md)、[心肌病变](diseases/心肌病变.md)、[心血管疾病](diseases/心血管疾病.md)、[心衰竭](diseases/心衰竭.md)、[急性冠状动脉综合症](diseases/急性冠状动脉综合症.md)、[感染性心内膜炎](diseases/感染性心内膜炎.md)、[斑块](diseases/斑块.md)、[无症状中风](diseases/无症状中风.md)、[栓塞](diseases/栓塞.md)、[缺血性心脏病](diseases/缺血性心脏病.md)、[肺动脉瓣狭窄](diseases/肺动脉瓣狭窄.md)、[脑内出血](diseases/脑内出血.md)、[脑内的动脉瘤](diseases/脑内的动脉瘤.md)、[蛛网膜下腔出血](diseases/蛛网膜下腔出血.md)、[血栓形成](diseases/血栓形成.md)、[跛行](diseases/跛行.md)、[长QT症](diseases/长QT症.md)、[阵发性室上性心搏过速](diseases/阵发性室上性心搏过速.md)、[颈动脉狭窄](diseases/颈动脉狭窄.md)、[风湿](diseases/风湿.md)、[高血压](diseases/高血压.md)、[高血压急症](diseases/高血压急症.md)
 
-### J（15）
+### J（24）
 
-[上呼吸道感染](diseases/上呼吸道感染.md)、[人类副流感病毒](diseases/人类副流感病毒.md)、[呼吸系统疾病](diseases/呼吸系统疾病.md)、[急性支气管炎](diseases/急性支气管炎.md)、[慢性阻塞性肺病](diseases/慢性阻塞性肺病.md)、[支原体肺炎](diseases/支原体肺炎.md)、[普通感冒](diseases/普通感冒.md)、[流行性感冒](diseases/流行性感冒.md)、[猪流感](diseases/猪流感.md)、[肺气肿](diseases/肺气肿.md)、[肺炎](diseases/肺炎.md)、[过敏性鼻炎](diseases/过敏性鼻炎.md)、[链球菌性咽炎](diseases/链球菌性咽炎.md)、[鼻咽炎](diseases/鼻咽炎.md)、[鼻炎](diseases/鼻炎.md)
+[上呼吸道感染](diseases/上呼吸道感染.md)、[下呼吸道感染](diseases/下呼吸道感染.md)、[人类副流感病毒](diseases/人类副流感病毒.md)、[呼吸系统疾病](diseases/呼吸系统疾病.md)、[急性支气管炎](diseases/急性支气管炎.md)、[慢性支气管炎](diseases/慢性支气管炎.md)、[慢性阻塞性肺病](diseases/慢性阻塞性肺病.md)、[支原体肺炎](diseases/支原体肺炎.md)、[普通感冒](diseases/普通感冒.md)、[流行性感冒](diseases/流行性感冒.md)、[流鼻涕](diseases/流鼻涕.md)、[猪流感](diseases/猪流感.md)、[真菌性鼻窦炎](diseases/真菌性鼻窦炎.md)、[肺气肿](diseases/肺气肿.md)、[肺炎](diseases/肺炎.md)、[肺积水](diseases/肺积水.md)、[肺纤维化](diseases/肺纤维化.md)、[胸膜炎](diseases/胸膜炎.md)、[脓胸](diseases/脓胸.md)、[过敏性鼻炎](diseases/过敏性鼻炎.md)、[链球菌性咽炎](diseases/链球菌性咽炎.md)、[鼻咽炎](diseases/鼻咽炎.md)、[鼻息肉](diseases/鼻息肉.md)、[鼻炎](diseases/鼻炎.md)
 
-### K（12）
+### K（17）
 
-[口腔溃疡](diseases/口腔溃疡.md)、[口腔炎](diseases/口腔炎.md)、[口腔疾病](diseases/口腔疾病.md)、[小肠炎](diseases/小肠炎.md)、[憩室炎](diseases/憩室炎.md)、[流涎](diseases/流涎.md)、[牙周炎](diseases/牙周炎.md)、[痔疮](diseases/痔疮.md)、[短肠症候群](diseases/短肠症候群.md)、[胃部疾病](diseases/胃部疾病.md)、[腹膜炎](diseases/腹膜炎.md)、[龋齿](diseases/龋齿.md)
+[口腔溃疡](diseases/口腔溃疡.md)、[口腔炎](diseases/口腔炎.md)、[口腔疾病](diseases/口腔疾病.md)、[吸收不良](diseases/吸收不良.md)、[小肠炎](diseases/小肠炎.md)、[息肉](diseases/息肉.md)、[憩室炎](diseases/憩室炎.md)、[流涎](diseases/流涎.md)、[牙周炎](diseases/牙周炎.md)、[牙痛](diseases/牙痛.md)、[痔疮](diseases/痔疮.md)、[直肠疾病](diseases/直肠疾病.md)、[短肠症候群](diseases/短肠症候群.md)、[胃部疾病](diseases/胃部疾病.md)、[腹泻](diseases/腹泻.md)、[腹膜炎](diseases/腹膜炎.md)、[龋齿](diseases/龋齿.md)
 
-### L（12）
+### L（24）
 
-[光照性皮炎](diseases/光照性皮炎.md)、[坏疽性脓皮症](diseases/坏疽性脓皮症.md)、[天疱疮](diseases/天疱疮.md)、[点滴状干癣](diseases/点滴状干癣.md)、[皮肤病](diseases/皮肤病.md)、[粉刺](diseases/粉刺.md)、[结节性红斑](diseases/结节性红斑.md)、[肛门瘙痒症](diseases/肛门瘙痒症.md)、[脂溢性皮炎](diseases/脂溢性皮炎.md)、[脓疮](diseases/脓疮.md)、[脱发](diseases/脱发.md)、[荨麻疹](diseases/荨麻疹.md)
+[光照性皮炎](diseases/光照性皮炎.md)、[坏疽性脓皮症](diseases/坏疽性脓皮症.md)、[多形性红斑](diseases/多形性红斑.md)、[天疱疮](diseases/天疱疮.md)、[寒冷性荨麻疹](diseases/寒冷性荨麻疹.md)、[指甲疾病](diseases/指甲疾病.md)、[日光伤](diseases/日光伤.md)、[点滴状干癣](diseases/点滴状干癣.md)、[皮肤溃疡](diseases/皮肤溃疡.md)、[皮肤病](diseases/皮肤病.md)、[类天疱疮](diseases/类天疱疮.md)、[粉刺](diseases/粉刺.md)、[红斑](diseases/红斑.md)、[结节性痒疹](diseases/结节性痒疹.md)、[结节性红斑](diseases/结节性红斑.md)、[肉芽肿](diseases/肉芽肿.md)、[肛门瘙痒症](diseases/肛门瘙痒症.md)、[脂溢性皮炎](diseases/脂溢性皮炎.md)、[脓疮](diseases/脓疮.md)、[脱发](diseases/脱发.md)、[色素沉着](diseases/色素沉着.md)、[荨麻疹](diseases/荨麻疹.md)、[雀斑](diseases/雀斑.md)、[黄褐斑](diseases/黄褐斑.md)
 
-### M（14）
+### M（22）
 
-[下背痛](diseases/下背痛.md)、[关节病变](diseases/关节病变.md)、[动脉瘤性骨囊肿](diseases/动脉瘤性骨囊肿.md)、[多关节炎](diseases/多关节炎.md)、[巨细胞动脉炎](diseases/巨细胞动脉炎.md)、[旋转肌腱撕裂](diseases/旋转肌腱撕裂.md)、[显微镜下多血管炎](diseases/显微镜下多血管炎.md)、[系统型幼年特发性关节炎](diseases/系统型幼年特发性关节炎.md)、[肌炎](diseases/肌炎.md)、[自体免疫性疾病](diseases/自体免疫性疾病.md)、[血管炎](diseases/血管炎.md)、[软骨病](diseases/软骨病.md)、[退化性关节炎](diseases/退化性关节炎.md)、[骨髓炎](diseases/骨髓炎.md)
+[下背痛](diseases/下背痛.md)、[关节疼痛](diseases/关节疼痛.md)、[关节病变](diseases/关节病变.md)、[动脉瘤性骨囊肿](diseases/动脉瘤性骨囊肿.md)、[坐骨神经痛](diseases/坐骨神经痛.md)、[多关节炎](diseases/多关节炎.md)、[巨细胞动脉炎](diseases/巨细胞动脉炎.md)、[旋转肌腱撕裂](diseases/旋转肌腱撕裂.md)、[显微镜下多血管炎](diseases/显微镜下多血管炎.md)、[皮肌炎](diseases/皮肌炎.md)、[神经炎](diseases/神经炎.md)、[系统型幼年特发性关节炎](diseases/系统型幼年特发性关节炎.md)、[肌炎](diseases/肌炎.md)、[肌肉萎缩](diseases/肌肉萎缩.md)、[肩峰下滑囊炎](diseases/肩峰下滑囊炎.md)、[脊柱关节炎](diseases/脊柱关节炎.md)、[自体免疫性疾病](diseases/自体免疫性疾病.md)、[血管炎](diseases/血管炎.md)、[软骨病](diseases/软骨病.md)、[退化性关节炎](diseases/退化性关节炎.md)、[骨囊肿](diseases/骨囊肿.md)、[骨髓炎](diseases/骨髓炎.md)
 
-### N（14）
+### N（26）
 
-[不孕](diseases/不孕.md)、[女性生殖系统疾病](diseases/女性生殖系统疾病.md)、[子宫内膜增生症](diseases/子宫内膜增生症.md)、[子宫内膜异位症](diseases/子宫内膜异位症.md)、[尿失禁](diseases/尿失禁.md)、[尿崩症](diseases/尿崩症.md)、[局部性肾丝球硬化症](diseases/局部性肾丝球硬化症.md)、[泌尿系统疾病](diseases/泌尿系统疾病.md)、[狼疮性肾炎](diseases/狼疮性肾炎.md)、[睾丸疾病](diseases/睾丸疾病.md)、[神经性膀胱功能异常](diseases/神经性膀胱功能异常.md)、[肾源性尿崩症](diseases/肾源性尿崩症.md)、[膜增生性肾小球肾炎](diseases/膜增生性肾小球肾炎.md)、[良性前列腺增生症](diseases/良性前列腺增生症.md)
+[不孕](diseases/不孕.md)、[乳腺炎](diseases/乳腺炎.md)、[女性生殖系统疾病](diseases/女性生殖系统疾病.md)、[子宫内膜增生症](diseases/子宫内膜增生症.md)、[子宫内膜异位症](diseases/子宫内膜异位症.md)、[子宫内膜炎](diseases/子宫内膜炎.md)、[尿失禁](diseases/尿失禁.md)、[尿崩症](diseases/尿崩症.md)、[局部性肾丝球硬化症](diseases/局部性肾丝球硬化症.md)、[慢性细菌性前列腺炎](diseases/慢性细菌性前列腺炎.md)、[慢性肾脏病](diseases/慢性肾脏病.md)、[排卵停止](diseases/排卵停止.md)、[更年期](diseases/更年期.md)、[月经过多](diseases/月经过多.md)、[泌尿系统疾病](diseases/泌尿系统疾病.md)、[狼疮性肾炎](diseases/狼疮性肾炎.md)、[睾丸疾病](diseases/睾丸疾病.md)、[神经性膀胱功能异常](diseases/神经性膀胱功能异常.md)、[经痛](diseases/经痛.md)、[肾源性尿崩症](diseases/肾源性尿崩症.md)、[膜增生性肾小球肾炎](diseases/膜增生性肾小球肾炎.md)、[良性前列腺增生症](diseases/良性前列腺增生症.md)、[输卵管卵巢脓肿](diseases/输卵管卵巢脓肿.md)、[阴道出血](diseases/阴道出血.md)、[阴道炎](diseases/阴道炎.md)、[非淋病性尿道炎](diseases/非淋病性尿道炎.md)
 
-### Q（5）
+### O（4）
 
-[三尖瓣闭锁](diseases/三尖瓣闭锁.md)、[主动脉缩窄](diseases/主动脉缩窄.md)、[先天性心脏传导阻滞](diseases/先天性心脏传导阻滞.md)、[瓣膜性心脏病](diseases/瓣膜性心脏病.md)、[角化症](diseases/角化症.md)
+[产后出血](diseases/产后出血.md)、[子宫乏力](diseases/子宫乏力.md)、[子宫复旧不全](diseases/子宫复旧不全.md)、[流产](diseases/流产.md)
 
-### R（24）
+### P（2）
 
-[出血](diseases/出血.md)、[发热](diseases/发热.md)、[呕吐](diseases/呕吐.md)、[呼吸困难](diseases/呼吸困难.md)、[多尿症](diseases/多尿症.md)、[夜尿症](diseases/夜尿症.md)、[头痛](diseases/头痛.md)、[寡尿](diseases/寡尿.md)、[尿潴留](diseases/尿潴留.md)、[手足强直](diseases/手足强直.md)、[手震](diseases/手震.md)、[打嗝](diseases/打嗝.md)、[无尿症](diseases/无尿症.md)、[构音障碍](diseases/构音障碍.md)、[热性痉挛](diseases/热性痉挛.md)、[疝痛](diseases/疝痛.md)、[疲倦](diseases/疲倦.md)、[疼痛](diseases/疼痛.md)、[痉挛](diseases/痉挛.md)、[神经源性休克](diseases/神经源性休克.md)、[肌性收缩痉挛](diseases/肌性收缩痉挛.md)、[胸口灼热](diseases/胸口灼热.md)、[败血性休克](diseases/败血性休克.md)、[遗尿症](diseases/遗尿症.md)
+[低体重早产儿](diseases/低体重早产儿.md)、[早产儿](diseases/早产儿.md)
 
-### S（1）
+### Q（8）
 
-[脑震荡](diseases/脑震荡.md)
+[三尖瓣闭锁](diseases/三尖瓣闭锁.md)、[主动脉缩窄](diseases/主动脉缩窄.md)、[先天性心脏传导阻滞](diseases/先天性心脏传导阻滞.md)、[大血管转位](diseases/大血管转位.md)、[淋巴水肿](diseases/淋巴水肿.md)、[瓣膜性心脏病](diseases/瓣膜性心脏病.md)、[肺动脉闭锁](diseases/肺动脉闭锁.md)、[角化症](diseases/角化症.md)
 
-### T（12）
+### R（41）
 
-[全身型过敏性反应](diseases/全身型过敏性反应.md)、[创伤](diseases/创伤.md)、[氰化物中毒](diseases/氰化物中毒.md)、[烧伤](diseases/烧伤.md)、[移植物对抗宿主疾病](diseases/移植物对抗宿主疾病.md)、[超敏反应](diseases/超敏反应.md)、[过敏](diseases/过敏.md)、[铅中毒](diseases/铅中毒.md)、[食物过敏](diseases/食物过敏.md)、[骨折](diseases/骨折.md)、[高山症](diseases/高山症.md)、[鸦片类药物中毒](diseases/鸦片类药物中毒.md)
+[不适](diseases/不适.md)、[休克](diseases/休克.md)、[减肥](diseases/减肥.md)、[出血](diseases/出血.md)、[发冷](diseases/发冷.md)、[发热](diseases/发热.md)、[呕吐](diseases/呕吐.md)、[呼吸困难](diseases/呼吸困难.md)、[嗜睡](diseases/嗜睡.md)、[嗝气](diseases/嗝气.md)、[多尿症](diseases/多尿症.md)、[夜尿症](diseases/夜尿症.md)、[头痛](diseases/头痛.md)、[寡尿](diseases/寡尿.md)、[尿潴留](diseases/尿潴留.md)、[幻觉](diseases/幻觉.md)、[心源性休克](diseases/心源性休克.md)、[手足强直](diseases/手足强直.md)、[手足徐动症](diseases/手足徐动症.md)、[手震](diseases/手震.md)、[打嗝](diseases/打嗝.md)、[抽搐](diseases/抽搐.md)、[无尿症](diseases/无尿症.md)、[昏迷](diseases/昏迷.md)、[构音障碍](diseases/构音障碍.md)、[水肿](diseases/水肿.md)、[热性痉挛](diseases/热性痉挛.md)、[疝痛](diseases/疝痛.md)、[疲倦](diseases/疲倦.md)、[疼痛](diseases/疼痛.md)、[痉挛](diseases/痉挛.md)、[神经源性休克](diseases/神经源性休克.md)、[粪便失禁](diseases/粪便失禁.md)、[肌性收缩痉挛](diseases/肌性收缩痉挛.md)、[肿大](diseases/肿大.md)、[胸口灼热](diseases/胸口灼热.md)、[脱屑](diseases/脱屑.md)、[腹水](diseases/腹水.md)、[血尿](diseases/血尿.md)、[败血性休克](diseases/败血性休克.md)、[遗尿症](diseases/遗尿症.md)
 
-### U（1）
+### S（2）
 
-[2019冠状病毒病](diseases/2019冠状病毒病.md)
+[损害](diseases/损害.md)、[脑震荡](diseases/脑震荡.md)
+
+### T（18）
+
+[全身型过敏性反应](diseases/全身型过敏性反应.md)、[创伤](diseases/创伤.md)、[擦伤](diseases/擦伤.md)、[杀虫剂中毒](diseases/杀虫剂中毒.md)、[氰化物中毒](diseases/氰化物中毒.md)、[烧伤](diseases/烧伤.md)、[移植物对抗宿主疾病](diseases/移植物对抗宿主疾病.md)、[肺水肿](diseases/肺水肿.md)、[药物过量](diseases/药物过量.md)、[血清病](diseases/血清病.md)、[超敏反应](diseases/超敏反应.md)、[过敏](diseases/过敏.md)、[铅中毒](diseases/铅中毒.md)、[铍中毒](diseases/铍中毒.md)、[食物过敏](diseases/食物过敏.md)、[骨折](diseases/骨折.md)、[高山症](diseases/高山症.md)、[鸦片类药物中毒](diseases/鸦片类药物中毒.md)
+
+### U（2）
+
+[2019冠状病毒病](diseases/2019冠状病毒病.md)、[冠状病毒病](diseases/冠状病毒病.md)
+
+### Y（1）
+
+[抗病毒药物](diseases/抗病毒药物.md)
+
+### Z（1）
+
+[潜伏结核感染](diseases/潜伏结核感染.md)
 
 ### k（1）
 
 [便血](diseases/便血.md)
+
+### 未分类（168）
+
+[三叉神经痛](diseases/三叉神经痛.md)、[中度](diseases/中度.md)、[中耳炎](diseases/中耳炎.md)、[中风](diseases/中风.md)、[佝偻病](diseases/佝偻病.md)、[儿童精神分裂症](diseases/儿童精神分裂症.md)、[先天性心脏病](diseases/先天性心脏病.md)、[关节炎](diseases/关节炎.md)、[再生障碍性贫血](diseases/再生障碍性贫血.md)、[军团病](diseases/军团病.md)、[冠心病](diseases/冠心病.md)、[出血性膀胱炎](diseases/出血性膀胱炎.md)、[前列腺炎](diseases/前列腺炎.md)、[动脉粥样硬化](diseases/动脉粥样硬化.md)、[化脓性汗腺炎](diseases/化脓性汗腺炎.md)、[十二指肠溃疡](diseases/十二指肠溃疡.md)、[单纯疱疹](diseases/单纯疱疹.md)、[卵巢癌](diseases/卵巢癌.md)、[原位癌](diseases/原位癌.md)、[原发性痛经](diseases/原发性痛经.md)、[原发性高血压](diseases/原发性高血压.md)、[反流性食管炎](diseases/反流性食管炎.md)、[口腔念珠菌病](diseases/口腔念珠菌病.md)、[口角炎](diseases/口角炎.md)、[吸收不良综合征](diseases/吸收不良综合征.md)、[周围神经炎](diseases/周围神经炎.md)、[呼吸道感染](diseases/呼吸道感染.md)、[咳嗽](diseases/咳嗽.md)、[咽喉痛](diseases/咽喉痛.md)、[咽炎](diseases/咽炎.md)、[哮喘](diseases/哮喘.md)、[回归热](diseases/回归热.md)、[多发性神经炎](diseases/多发性神经炎.md)、[宫颈癌](diseases/宫颈癌.md)、[家族性高胆固醇血症](diseases/家族性高胆固醇血症.md)、[寻常痤疮](diseases/寻常痤疮.md)、[尿路感染](diseases/尿路感染.md)、[尿道炎](diseases/尿道炎.md)、[布鲁菌病](diseases/布鲁菌病.md)、[帕金森病](diseases/帕金森病.md)、[常年性鼻炎](diseases/常年性鼻炎.md)、[广泛性焦虑障碍](diseases/广泛性焦虑障碍.md)、[开角型青光眼](diseases/开角型青光眼.md)、[强直性脊柱炎](diseases/强直性脊柱炎.md)、[心脏病](diseases/心脏病.md)、[念珠菌病](diseases/念珠菌病.md)、[急性中耳炎](diseases/急性中耳炎.md)、[急性冠脉综合征](diseases/急性冠脉综合征.md)、[急性心肌梗死](diseases/急性心肌梗死.md)、[急性肺水肿](diseases/急性肺水肿.md)、[急性肾小球肾炎](diseases/急性肾小球肾炎.md)、[急性肾盂肾炎](diseases/急性肾盂肾炎.md)、[急性血源性骨髓炎](diseases/急性血源性骨髓炎.md)、[急救](diseases/急救.md)、[性欲减退](diseases/性欲减退.md)、[恙虫病](diseases/恙虫病.md)、[感冒](diseases/感冒.md)、[慢性斑块状银屑病](diseases/慢性斑块状银屑病.md)、[慢性病](diseases/慢性病.md)、[慢性荨麻疹](diseases/慢性荨麻疹.md)、[戈谢病](diseases/戈谢病.md)、[扁平疣](diseases/扁平疣.md)、[扁桃体炎](diseases/扁桃体炎.md)、[抑郁症](diseases/抑郁症.md)、[支气管炎](diseases/支气管炎.md)、[斑秃](diseases/斑秃.md)、[早期乳腺癌](diseases/早期乳腺癌.md)、[梅毒](diseases/梅毒.md)、[沙眼](diseases/沙眼.md)、[流感嗜血杆菌脑膜炎](diseases/流感嗜血杆菌脑膜炎.md)、[消化不良](diseases/消化不良.md)、[溃疡性结肠炎](diseases/溃疡性结肠炎.md)、[滑囊炎](diseases/滑囊炎.md)、[焦虑症](diseases/焦虑症.md)、[牙龈炎](diseases/牙龈炎.md)、[牛皮癣](diseases/牛皮癣.md)、[生殖道感染](diseases/生殖道感染.md)、[甲真菌病](diseases/甲真菌病.md)、[甲醇中毒](diseases/甲醇中毒.md)、[疟疾](diseases/疟疾.md)、[疱疹](diseases/疱疹.md)、[疱疹样皮炎](diseases/疱疹样皮炎.md)、[痒疹](diseases/痒疹.md)、[痛风](diseases/痛风.md)、[痛风性关节炎](diseases/痛风性关节炎.md)、[瘙痒症](diseases/瘙痒症.md)、[癫痫](diseases/癫痫.md)、[白内障](diseases/白内障.md)、[白癜风](diseases/白癜风.md)、[白血病](diseases/白血病.md)、[皮炎](diseases/皮炎.md)、[皮肤利什曼病](diseases/皮肤利什曼病.md)、[盆腔炎](diseases/盆腔炎.md)、[直肠癌](diseases/直肠癌.md)、[着色芽生菌病](diseases/着色芽生菌病.md)、[破伤风](diseases/破伤风.md)、[稳定型心绞痛](diseases/稳定型心绞痛.md)、[类风湿关节炎](diseases/类风湿关节炎.md)、[糖尿病](diseases/糖尿病.md)、[糖尿病性视网膜病变](diseases/糖尿病性视网膜病变.md)、[糖尿病足](diseases/糖尿病足.md)、[紫癜](diseases/紫癜.md)、[红斑狼疮](diseases/红斑狼疮.md)、[细菌性前列腺炎](diseases/细菌性前列腺炎.md)、[细菌感染](diseases/细菌感染.md)、[结肠炎](diseases/结肠炎.md)、[结节性甲状腺肿](diseases/结节性甲状腺肿.md)、[绝经](diseases/绝经.md)、[网膜炎](diseases/网膜炎.md)、[肌肉痉挛](diseases/肌肉痉挛.md)、[肌腱炎](diseases/肌腱炎.md)、[肝炎](diseases/肝炎.md)、[肝病](diseases/肝病.md)、[肝硬化](diseases/肝硬化.md)、[肝硬化腹水](diseases/肝硬化腹水.md)、[肠易激综合征](diseases/肠易激综合征.md)、[肠炎](diseases/肠炎.md)、[肠癌](diseases/肠癌.md)、[肺动脉高压](diseases/肺动脉高压.md)、[肺病](diseases/肺病.md)、[肺结核](diseases/肺结核.md)、[肺脓肿](diseases/肺脓肿.md)、[肾功能不全](diseases/肾功能不全.md)、[肾小球肾炎](diseases/肾小球肾炎.md)、[肾炎](diseases/肾炎.md)、[肾病](diseases/肾病.md)、[肾病综合征](diseases/肾病综合征.md)、[肾盂肾炎](diseases/肾盂肾炎.md)、[肾移植](diseases/肾移植.md)、[胃癌](diseases/胃癌.md)、[胃食管反流病](diseases/胃食管反流病.md)、[胆囊炎](diseases/胆囊炎.md)、[胆道感染](diseases/胆道感染.md)、[脑梗塞](diseases/脑梗塞.md)、[脑病](diseases/脑病.md)、[脑膜炎](diseases/脑膜炎.md)、[脓肿](diseases/脓肿.md)、[膀胱炎](diseases/膀胱炎.md)、[膀胱癌](diseases/膀胱癌.md)、[膀胱过度活动症](diseases/膀胱过度活动症.md)、[芽生菌病](diseases/芽生菌病.md)、[荨麻疹和血管性水肿](diseases/荨麻疹和血管性水肿.md)、[葡萄球菌肺炎](diseases/葡萄球菌肺炎.md)、[血小板减少性紫癜](diseases/血小板减少性紫癜.md)、[视网膜炎](diseases/视网膜炎.md)、[视网膜静脉阻塞](diseases/视网膜静脉阻塞.md)、[角膜炎](diseases/角膜炎.md)、[诺卡菌病](diseases/诺卡菌病.md)、[贫血](diseases/贫血.md)、[足癣](diseases/足癣.md)、[软下疳](diseases/软下疳.md)、[过敏性结膜炎](diseases/过敏性结膜炎.md)、[银屑病](diseases/银屑病.md)、[银屑病关节炎](diseases/银屑病关节炎.md)、[闭经](diseases/闭经.md)、[阑尾炎](diseases/阑尾炎.md)、[阵发性室上性心动过速](diseases/阵发性室上性心动过速.md)、[阿尔茨海默病](diseases/阿尔茨海默病.md)、[霍奇金淋巴瘤](diseases/霍奇金淋巴瘤.md)、[风湿热](diseases/风湿热.md)、[食管炎](diseases/食管炎.md)、[骨关节炎](diseases/骨关节炎.md)、[骨病](diseases/骨病.md)、[骨质疏松](diseases/骨质疏松.md)、[高甘油三酯血症](diseases/高甘油三酯血症.md)、[麻风](diseases/麻风.md)、[麻风病](diseases/麻风病.md)、[鼻窦炎](diseases/鼻窦炎.md)

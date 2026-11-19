@@ -26,12 +26,15 @@ def render_observation(tool: str, o: Any) -> str:
     if tool == "check_interaction" or "interactions" in o and "drugs" in o:
         if not o.get("interactions"):
             return f"知识库未发现{'、'.join(o.get('drugs', []))}之间的已知相互作用，但不代表绝对安全，请咨询药师。"
-        lines = [f"{'+'.join(i['drugs'])}：{i['description']}（{i['severity']}）" for i in o["interactions"]]
+        sev = {"label": "说明书", "major": "严重", "moderate": "中等", "minor": "轻微", "unknown": "程度未知"}
+        lines = [f"{'+'.join(i['drugs'])}：{i['description']}（{sev.get(i['severity'], i['severity'])}）" for i in o["interactions"]]
         return "发现以下相互作用：" + "；".join(lines) + "。请勿自行合用，咨询医生或药师。"
     if tool == "search_guideline" or "content" in o and "source" in o:
         if not o.get("found", True):
             return f"暂未检索到「{o.get('topic', '')}」相关的指南条目。"
-        return f"{o['topic']}：{o['content']}（出处：{o['source']} {o.get('year', '')}）。"
+        drugs = (o.get("label_drugs") or {}).get("drugs", [])
+        extra = ("说明书适应症写明了本病的药：" + "、".join(d["name"] for d in drugs[:8]) + "（选药须遵医嘱）。") if drugs else ""
+        return f"{o['topic']}：{o['content']}（出处：{o['source']} {o.get('year', '')}）。{extra}"
     if tool == "search_knowledge" and o.get("evidence"):
         ev = o["evidence"][0]
         return f"相关资料：{ev['text'][:200]}（来源：{ev.get('source', '')}）"

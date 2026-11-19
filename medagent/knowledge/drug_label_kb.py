@@ -213,13 +213,25 @@ async def inn_aliases(llm: LLM, names: list[str], by_en: dict[str, str]) -> dict
 _SENT = re.compile(r"(?<=[。；;！!])|(?=\s*(?:\d{1,2}[)）、.．]|[（(]\d{1,2}[)）]|[①-⑳]))")
 
 
+CUT_NOTE = "（节选，完整内容见说明书）"
+
+
+def cut_at_sentence(text: str, n: int) -> str:
+    """超长时在 n 字以内最后一个句号 / 分号处截断，不切半句（“当开始用吡格列酮治疗时，胰岛……”会丢掉关键的减量说明）。"""
+    if len(text) <= n:
+        return text
+    head = text[:n]
+    i = max(head.rfind(c) for c in "。；;！!")
+    return (head[: i + 1] if i >= n // 3 else head[: max(head.rfind("，"), n // 3)] + "。") + CUT_NOTE
+
+
 async def condense(llm: LLM, field: str, text: str, limit: int = 320) -> tuple[str, str]:
     """过长的说明书原文：让模型挑句子编号，按原顺序拼回原句（抽取式，不改写）。"""
     if len(text) <= limit:
         return text, "verbatim"
     sents = [s.strip() for s in _SENT.split(text) if s.strip()]
     if len(sents) < 2:
-        return text[:limit] + "……", "verbatim_truncated"
+        return cut_at_sentence(text, limit), "verbatim_truncated"
     label = {"dosage": "成人常用用法用量", "side_effects": "最常见和最严重的不良反应", "contraindications": "禁用人群和禁用情形",
              "indications": "主要适应症", "interactions_text": "最重要的药物相互作用"}[field]
     numbered = "\n".join(f"[{i}] {s}" for i, s in enumerate(sents))
@@ -227,9 +239,9 @@ async def condense(llm: LLM, field: str, text: str, limit: int = 320) -> tuple[s
                        f"不要改写。只输出 JSON 数组，例如 [0, 2, 5]。\n{numbered}", 200)
     idx = sorted({i for i in (r or []) if isinstance(i, int) and 0 <= i < len(sents)})
     if not idx:
-        return text[:limit] + "……", "verbatim_truncated"
+        return cut_at_sentence(text, limit), "verbatim_truncated"
     picked = "".join(sents[i] for i in idx)
-    return (picked if len(picked) <= limit * 1.3 else picked[: int(limit * 1.3)] + "……"), "extract"
+    return cut_at_sentence(picked, int(limit * 1.3)), "extract"
 
 
 _NUM = re.compile(r"\d+(?:\.\d+)?")

@@ -195,4 +195,6 @@ def load_ext() -> ExtKB | None:
     labels = None
     if DRUG_PATH.exists() and os.environ.get("MEDAGENT_DRUG_LABELS", "1") != "0":   # MEDAGENT_DRUG_LABELS=0 → 回到纯 Wikidata
         labels = json.loads(DRUG_PATH.read_text(encoding="utf-8"))
+        from .wiki_check import apply_quarantine
+        apply_quarantine(labels["drugs"])          # 独立复核不通过的字段（wiki_quarantine.json）运行时不再使用
     return ExtKB(json.loads(PATH.read_text(encoding="utf-8")), labels)

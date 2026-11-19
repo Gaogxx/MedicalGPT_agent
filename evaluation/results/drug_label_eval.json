@@ -1,7 +1,7 @@
 {
  "runs": {
   "off": "evaluation/results/live_druglabel_full_off.json",
-  "final": "evaluation/results/live_druglabel_final2.json"
+  "final": "evaluation/results/live_druglabel_wiki2.json"
  },
  "metrics": {
   "off": {
@@ -59,49 +59,49 @@
   "final": {
    "all": {
     "n": 400,
-    "ref_recall": 0.1996,
-    "gap_rate": 0.0525,
+    "ref_recall": 0.1963,
+    "gap_rate": 0.0575,
     "unsupported_dose_rate": 0.0,
-    "cross_form_dose_rate": 0.0,
+    "cross_form_dose_rate": 0.0063,
     "n_form_asked": 160
    },
    "not_exact_in_train": {
     "n": 400,
-    "ref_recall": 0.1996,
-    "gap_rate": 0.0525,
+    "ref_recall": 0.1963,
+    "gap_rate": 0.0575,
     "unsupported_dose_rate": 0.0,
-    "cross_form_dose_rate": 0.0,
+    "cross_form_dose_rate": 0.0063,
     "n_form_asked": 160
    },
    "kb_has_field": {
     "n": 399,
-    "ref_recall": 0.2001,
-    "gap_rate": 0.0526,
+    "ref_recall": 0.1968,
+    "gap_rate": 0.0576,
     "unsupported_dose_rate": 0.0,
-    "cross_form_dose_rate": 0.0,
+    "cross_form_dose_rate": 0.0063,
     "n_form_asked": 160
    },
    "by_field": {
     "dosage": {
      "n": 181,
-     "ref_recall": 0.1209,
-     "gap_rate": 0.1105,
+     "ref_recall": 0.1184,
+     "gap_rate": 0.105,
      "unsupported_dose_rate": 0.0,
-     "cross_form_dose_rate": 0.0,
+     "cross_form_dose_rate": 0.0063,
      "n_form_asked": 160
     },
     "side_effects": {
      "n": 144,
-     "ref_recall": 0.2587,
-     "gap_rate": 0.0069,
+     "ref_recall": 0.2523,
+     "gap_rate": 0.0208,
      "unsupported_dose_rate": null,
      "cross_form_dose_rate": null,
      "n_form_asked": 0
     },
     "contraindications": {
      "n": 75,
-     "ref_recall": 0.276,
-     "gap_rate": 0.0,
+     "ref_recall": 0.2771,
+     "gap_rate": 0.0133,
      "unsupported_dose_rate": null,
      "cross_form_dose_rate": null,
      "n_form_asked": 0
@@ -109,8 +109,8 @@
    }
   },
   "paired": {
-   "final_better": 164,
-   "off_better": 8
+   "final_better": 162,
+   "off_better": 6
   }
  },
  "per_case": {
@@ -136,7 +136,7 @@
   },
   "d010": {
    "off": 0.0,
-   "final": 0.067
+   "final": 0.033
   },
   "d013": {
    "off": 0.0,
@@ -144,7 +144,7 @@
   },
   "d017": {
    "off": 0.0,
-   "final": 0.5
+   "final": 0.0
   },
   "d019": {
    "off": 0.0,
@@ -196,7 +196,7 @@
   },
   "d052": {
    "off": 0.071,
-   "final": 0.214
+   "final": 0.071
   },
   "d054": {
    "off": 0.2,
@@ -252,7 +252,7 @@
   },
   "d075": {
    "off": 0.0,
-   "final": 0.0
+   "final": 0.167
   },
   "d078": {
    "off": 0.0,
@@ -272,7 +272,7 @@
   },
   "d085": {
    "off": 0.167,
-   "final": 0.2
+   "final": 0.167
   },
   "d086": {
    "off": 0.5,
@@ -304,7 +304,7 @@
   },
   "d094": {
    "off": 0.333,
-   "final": 0.167
+   "final": 0.333
   },
   "d095": {
    "off": 0.6,
@@ -368,7 +368,7 @@
   },
   "d117": {
    "off": 0.033,
-   "final": 0.267
+   "final": 0.2
   },
   "d118": {
    "off": 0.0,
@@ -376,7 +376,7 @@
   },
   "d120": {
    "off": 0.083,
-   "final": 0.167
+   "final": 0.0
   },
   "d121": {
    "off": 0.067,
@@ -388,7 +388,7 @@
   },
   "d123": {
    "off": 0.1,
-   "final": 0.333
+   "final": 0.2
   },
   "d124": {
    "off": 0.0,
@@ -396,7 +396,7 @@
   },
   "d128": {
    "off": 0.0,
-   "final": 0.333
+   "final": 0.25
   },
   "d129": {
    "off": 0.0,
@@ -616,7 +616,7 @@
   },
   "d243": {
    "off": 0.0,
-   "final": 0.0
+   "final": 0.083
   },
   "d245": {
    "off": 0.0,
@@ -640,7 +640,7 @@
   },
   "d261": {
    "off": 0.1,
-   "final": 0.1
+   "final": 0.2
   },
   "d263": {
    "off": 0.125,
@@ -648,7 +648,7 @@
   },
   "d264": {
    "off": 0.0,
-   "final": 0.0
+   "final": 0.083
   },
   "d266": {
    "off": 0.0,
@@ -744,7 +744,7 @@
   },
   "d325": {
    "off": 0.05,
-   "final": 0.05
+   "final": 0.0
   },
   "d326": {
    "off": 0.0,
@@ -772,7 +772,7 @@
   },
   "d334": {
    "off": 0.1,
-   "final": 0.367
+   "final": 0.167
   },
   "d335": {
    "off": 0.0,
@@ -832,7 +832,7 @@
   },
   "d363": {
    "off": 0.0,
-   "final": 0.167
+   "final": 0.033
   },
   "d366": {
    "off": 0.174,
@@ -840,7 +840,7 @@
   },
   "d367": {
    "off": 0.133,
-   "final": 0.167
+   "final": 0.1
   },
   "d369": {
    "off": 0.0,
@@ -892,7 +892,7 @@
   },
   "d405": {
    "off": 0.5,
-   "final": 0.375
+   "final": 0.5
   },
   "d406": {
    "off": 0.0,
@@ -928,7 +928,7 @@
   },
   "d423": {
    "off": 0.0,
-   "final": 0.3
+   "final": 0.2
   },
   "d424": {
    "off": 0.0,
@@ -968,7 +968,7 @@
   },
   "d442": {
    "off": 0.0,
-   "final": 0.75
+   "final": 0.25
   },
   "d445": {
    "off": 0.0,
@@ -1032,7 +1032,7 @@
   },
   "d482": {
    "off": 0.385,
-   "final": 0.692
+   "final": 0.769
   },
   "d485": {
    "off": 0.0,
@@ -1056,7 +1056,7 @@
   },
   "d494": {
    "off": 0.167,
-   "final": 0.233
+   "final": 0.267
   },
   "d495": {
    "off": 0.0,
@@ -1064,7 +1064,7 @@
   },
   "d497": {
    "off": 0.0,
-   "final": 0.0
+   "final": 0.143
   },
   "d498": {
    "off": 0.0,
@@ -1072,7 +1072,7 @@
   },
   "d499": {
    "off": 0.133,
-   "final": 0.067
+   "final": 0.133
   },
   "d501": {
    "off": 0.0,
@@ -1096,11 +1096,11 @@
   },
   "d512": {
    "off": 0.071,
-   "final": 0.571
+   "final": 0.5
   },
   "d514": {
    "off": 0.0,
-   "final": 0.033
+   "final": 0.0
   },
   "d515": {
    "off": 0.0,
@@ -1132,7 +1132,7 @@
   },
   "d525": {
    "off": 0.033,
-   "final": 0.2
+   "final": 0.133
   },
   "d531": {
    "off": 0.316,
@@ -1188,7 +1188,7 @@
   },
   "d551": {
    "off": 0.0,
-   "final": 0.583
+   "final": 0.417
   },
   "d553": {
    "off": 0.333,
@@ -1420,7 +1420,7 @@
   },
   "d654": {
    "off": 0.0,
-   "final": 0.091
+   "final": 0.0
   },
   "d656": {
    "off": 0.0,
@@ -1444,7 +1444,7 @@
   },
   "d663": {
    "off": 0.176,
-   "final": 0.353
+   "final": 0.294
   },
   "d664": {
    "off": 0.0,
@@ -1472,11 +1472,11 @@
   },
   "d673": {
    "off": 0.0,
-   "final": 0.0
+   "final": 0.4
   },
   "d677": {
    "off": 0.067,
-   "final": 0.133
+   "final": 0.067
   },
   "d679": {
    "off": 0.0,
@@ -1508,7 +1508,7 @@
   },
   "d690": {
    "off": 0.0,
-   "final": 0.333
+   "final": 0.222
   },
   "d692": {
    "off": 0.067,
@@ -1536,7 +1536,7 @@
   },
   "d702": {
    "off": 0.0,
-   "final": 0.455
+   "final": 0.364
   },
   "d703": {
    "off": 0.067,
@@ -1624,7 +1624,7 @@
   },
   "d736": {
    "off": 0.1,
-   "final": 0.133
+   "final": 0.1
   },
   "d738": {
    "off": 0.0,
@@ -1696,7 +1696,7 @@
   },
   "d771": {
    "off": 0.0,
-   "final": 0.0
+   "final": 0.25
   },
   "d773": {
    "off": 0.0,

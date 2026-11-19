@@ -26,7 +26,7 @@ updated: "2026-11-19"
 
 <sub>来源：美国 FDA 说明书（模型译写，已核对） set_id=9c4ae9d9-c2a0-4995-a27a-e3f0f0284db9 effective=20260820</sub>
 
-相关疾病：[粉刺](../diseases/粉刺.md)、[皮肤病](../diseases/皮肤病.md)
+相关疾病：[粉刺](../diseases/粉刺.md)、[皮肤病](../diseases/皮肤病.md)、[白血病](../diseases/白血病.md)
 
 ## 禁忌
 
