@@ -1,0 +1,88 @@
+{
+ "off": {
+  "drug_choice": {
+   "n": 150,
+   "concrete": 0.56,
+   "label_supported": 0.353,
+   "any_supported": 0.32,
+   "kg_hit": 0.193,
+   "contra_named": 0.0,
+   "gap": 0.3,
+   "avg_drugs_named": 1.747
+  },
+  "interaction": {
+   "n": 150,
+   "flagged": 1.0,
+   "said_safe": 0.0,
+   "effect_recall": 0.515,
+   "gap": 0.367,
+   "flagged_class_items": 1.0
+  },
+  "tool_calls": {
+   "check_interaction": 150,
+   "check_symptom": 8,
+   "search_guideline": 142
+  }
+ },
+ "old": {
+  "drug_choice": {
+   "n": 150,
+   "concrete": 0.867,
+   "label_supported": 0.665,
+   "any_supported": 0.733,
+   "kg_hit": 0.467,
+   "contra_named": 0.013,
+   "gap": 0.007,
+   "avg_drugs_named": 3.32
+  },
+  "interaction": {
+   "n": 150,
+   "flagged": 0.987,
+   "said_safe": 0.0,
+   "effect_recall": 0.887,
+   "gap": 0.007,
+   "flagged_class_items": 0.96
+  },
+  "tool_calls": {
+   "check_interaction": 150,
+   "check_symptom": 8,
+   "search_guideline": 142
+  }
+ },
+ "v5": {
+  "drug_choice": {
+   "n": 150,
+   "concrete": 0.787,
+   "label_supported": 0.765,
+   "any_supported": 0.693,
+   "kg_hit": 0.44,
+   "contra_named": 0.027,
+   "gap": 0.033,
+   "avg_drugs_named": 3.62
+  },
+  "interaction": {
+   "n": 150,
+   "flagged": 1.0,
+   "said_safe": 0.0,
+   "effect_recall": 0.929,
+   "gap": 0.0,
+   "flagged_class_items": 1.0
+  },
+  "tool_calls": {
+   "check_interaction": 150,
+   "check_symptom": 17,
+   "search_guideline": 118
+  }
+ },
+ "paired": {
+  "drug_choice_any_supported": {
+   "better": 67,
+   "worse": 11
+  },
+  "interaction_flagged": {
+   "better": 0,
+   "worse": 0
+  },
+  "compare": "v5 vs off"
+ }
+}

@@ -55,22 +55,33 @@ def load_json(p: Path, default: Any) -> Any:
 
 
 # ---------------------------------------------------------------- 隔离区
+def field_text(e: dict[str, Any], f: str) -> str | None:
+    parts = f.split(".")
+    if len(parts) == 3 and parts[0] == "by_form":
+        return e.get("by_form", {}).get(parts[1], {}).get(parts[2])
+    return e.get(f)
+
+
 def apply_quarantine(drugs: dict[str, dict], quarantine: dict[str, dict] | None = None) -> int:
-    """把隔离区里的字段从条目里拿掉（原地修改）。键是 "dosage" 或 "by_form.注射.dosage"。返回拿掉的字段数。"""
+    """把隔离区里的字段从条目里拿掉（原地修改）。键是 "dosage" 或 "by_form.注射.dosage"。返回拿掉的字段数。
+    记录里带了内容哈希 h 的，只在当前文字和复核时一样时才拿掉——重新编译 / 重写过的内容不受旧结论影响，由下次复核重新判。"""
     q = load_json(QUARANTINE_PATH, {}) if quarantine is None else quarantine
     n = 0
     for qid, fields in q.items():
         e = drugs.get(qid)
         if not e:
             continue
-        for f in fields:
+        for f, rec in fields.items():
+            cur = field_text(e, f)
+            if cur is None or (isinstance(rec, dict) and rec.get("h") and rec["h"] != _h(cur)):
+                continue
             parts = f.split(".")
-            if len(parts) == 3 and parts[0] == "by_form":
-                if e.get("by_form", {}).get(parts[1], {}).pop(parts[2], None) is not None:
-                    n += 1
-            elif e.pop(f, None) is not None:
+            if len(parts) == 3:
+                e["by_form"][parts[1]].pop(parts[2], None)
+            else:
+                e.pop(f, None)
                 e.get("source", {}).pop(f, None)
-                n += 1
+            n += 1
     return n
 
 
@@ -108,7 +119,7 @@ async def verify_links(llm: Any, b: Builder) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- 独立复核（抽样）
-def _sample(drugs: dict[str, dict], n: int, seed: int) -> list[dict[str, Any]]:
+def _sample(drugs: dict[str, dict], n: int, seed: int, only: list[str] | None = None) -> list[dict[str, Any]]:
     """按来源分层抽样：Huatuo 原样摘录 / 抽取式、openFDA 译写、模型要点，各占约四分之一。"""
     pools: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for q, e in drugs.items():
@@ -125,7 +136,7 @@ def _sample(drugs: dict[str, dict], n: int, seed: int) -> list[dict[str, Any]]:
             pools[kind].append({"q": q, "drug": e["name"], "field": f, "text": text, "source": src, "kind": kind,
                                 "product": (src.split("「")[1].split("」")[0] if "「" in src else "") or prod})
     rng = random.Random(seed)
-    kinds = [k for k in ("huatuo_verbatim", "huatuo_extract", "openfda", "summary") if pools[k]]
+    kinds = [k for k in ("huatuo_verbatim", "huatuo_extract", "openfda", "summary") if pools[k] and (not only or k in only)]
     out = []
     for k in kinds:
         out += rng.sample(pools[k], min(len(pools[k]), max(1, n // len(kinds))))
@@ -138,7 +149,7 @@ _FIELD_ZH = {"indications": "适应症", "contraindications": "禁忌", "dosage"
 
 
 async def audit(llm: Any, drugs: dict[str, dict], n: int, seed: int, huatuo: str | None,
-                translations: str | None, recheck: bool = False) -> dict[str, Any]:
+                translations: str | None, recheck: bool = False, kinds: list[str] | None = None) -> dict[str, Any]:
     """recheck=True：只复查隔离区里的字段（改了编译规则 / 人工修正之后），这次通过的放出隔离区。"""
     from .drug_label_kb import CUT_NOTE, clean, load_huatuo
     raw = load_huatuo(huatuo) if huatuo else {}
@@ -152,7 +163,7 @@ async def audit(llm: Any, drugs: dict[str, dict], n: int, seed: int, huatuo: str
     if recheck:
         items = [it for it in _sample(drugs, 10 ** 9, seed) if it["field"] in quarantine.get(it["q"], {})]
     else:
-        items = _sample(drugs, n, seed)
+        items = _sample(drugs, n, seed, kinds)
 
     async def one(it: dict[str, Any]) -> None:
         field = it["field"].split(".")[-1]
@@ -221,7 +232,8 @@ async def audit(llm: Any, drugs: dict[str, dict], n: int, seed: int, huatuo: str
                 released += 1
         quarantine = {q: v for q, v in quarantine.items() if v}
     for it in fails:
-        quarantine.setdefault(it["q"], {})[it["field"]] = {"problem": it["problem"], "audit": date.today().isoformat()}
+        quarantine.setdefault(it["q"], {})[it["field"]] = {"problem": it["problem"], "audit": date.today().isoformat(),
+                                                           "h": _h(it["text"])}
     QUARANTINE_PATH.write_text(json.dumps(quarantine, ensure_ascii=False, indent=1), encoding="utf-8")
     omit = [it for it in done if it["verdict"] == "omission"]
     rep = {"date": datetime.now().isoformat(timespec="minutes"), "sampled": len(items), "checked": len(done),
@@ -388,6 +400,7 @@ def main() -> None:
     a.add_argument("--huatuo", help="Huatuo 百科问答 train（核对摘录）")
     a.add_argument("--translations", help="drug_label_kb.py --review-out 的输出（openFDA 英文原文 + 译文）")
     a.add_argument("--recheck", action="store_true", help="只复查隔离区里的字段，通过的放出来")
+    a.add_argument("--kinds", help="只复核这些来源，逗号分隔：huatuo_verbatim,huatuo_extract,openfda,summary")
     sub.add_parser("check")
     g = sub.add_parser("gate", help="候选版 vs 现行版的上线门槛（wiki_cycle.sh 用）")
     g.add_argument("--druglabel", required=True, help="score_drug_label_eval.py 的输出（base / cand 两组）")
@@ -410,7 +423,7 @@ def main() -> None:
             if not args.recheck:
                 apply_quarantine(kb["drugs"])
             print(json.dumps(asyncio.run(audit(llm, kb["drugs"], args.n, args.seed, args.huatuo, args.translations,
-                                               args.recheck)),
+                                               args.recheck, args.kinds.split(",") if args.kinds else None)),
                              ensure_ascii=False, indent=1))
     elif args.cmd == "gate":
         lines, ok = gate(args.druglabel, args.wiki, args.kb_base, args.kb_cand)

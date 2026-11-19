@@ -4,7 +4,7 @@
 
 | 层 | 内容 | 规模 | 许可 | 用途 | 代码 |
 |---|---|---|---|---|---|
-| ① 精选 KB | 症状 / 药品 / 指南，含用法、禁忌、指南概括 | 21 / 10 / 9 条 | 原仓库手写，未审核 | 工具直接回答（症状→病因、药品说明、相互作用）；降级模式唯一来源 | `medagent/knowledge/kb.json`、`build_kb.py` |
+| ① 精选 KB | 症状 / 药品 / 指南，含用法、禁忌、指南概括 | 21 / 10 / 9 条 | 原仓库手写，未审核 | 工具直接回答（症状→病因、药品说明、相互作用）；已并入药品说明书层（见 ②′） | `medagent/knowledge/kb.json`、`build_kb.py` |
 | ② 实体层 | Wikidata 疾病（ICD-10）、药物（ATC）、中文别名、疾病—治疗药物关系 | 2,395 疾病 / 2,483 药物 / 4,817 别名 | CC0 | 认出几千个疾病和药名、给出编码与基础信息；**不做症状→病因** | `medagent/knowledge/wikidata_kb.py`、`ext.py` |
 | ②′ 药品说明书层 + 医药 Wiki | 给实体层药品补适应症 / 禁忌 / 用法用量（按剂型）/ 不良反应 / 相互作用，并入精选库 10 个药；渲染成互相链接、带出处的 Markdown 页面 | 2,483 个药中 572 个三项齐全（复核隔离后）；Wiki 药品 1,323 页、疾病 661 页 | Huatuo（Apache-2.0）+ openFDA（公有领域）+ Wikidata（CC0） | `search_drug` 按剂型返回；`check_interaction` 查两份说明书互相点名 / 点类；`search_guideline` 附说明书适应症写明本病的药；`search_knowledge` 按意图把 Wiki 段落放最前；`MEDAGENT_DRUG_LABELS=0` / `MEDAGENT_WIKI=0` / `MEDAGENT_WIKI_TOOLS=0` 关掉 | `drug_label_kb.py` → `drug_kb.json` → `wiki.py` → `wiki/` |
 | ③ 全文检索 | 本地：Huatuo 百科问答 / 知识图谱问答 / Huatuo26M-Lite / shibing624/medical | **3,287,539 篇**（3.58GB，SQLite FTS5） | Apache-2.0 | `search_knowledge` 工具查资料、RAG 证据 | `medagent/rag/scalable.py` |
@@ -106,7 +106,7 @@ python evaluation/score_drug_label_eval.py off=evaluation/results/live_druglabel
 **上一版没打通的地方**：模型问“能不能一起吃”调 `check_interaction`、问“某病用什么药”调 `search_guideline`（296 题和下面 300 题里都是如此，
 几乎不调 `search_knowledge`），而这两个工具原来只认精选库 10 个药、10 对手写组合和 Wikidata，450 份说明书的相互作用段落和疾病页都没用上——
 下面评测里“上一版”和“补全前”的 300 个回答逐字相同。MCP 资源 `wiki://index`、`wiki://page/{名}` 是给 MCP 客户端（Claude Desktop、DSH 等）
-和人直接读页面的，问答模型走工具、不读资源；模型全部不可用时的降级模式只用精选库，不用未经审核的 Wiki。
+和人直接读页面的，问答模型走工具、不读资源。
 
 这次接上的：
 
@@ -190,6 +190,19 @@ MEDAGENT_DRUG_LABELS=0 MEDAGENT_WIKI=0 MEDAGENT_WIKI_TOOLS=0 python evaluation/r
 python evaluation/run_live_eval.py --set wiki --temperature 0 --out evaluation/results/live_wiki_new.json
 python evaluation/score_wiki_eval.py off=evaluation/results/live_wiki_off.json new=evaluation/results/live_wiki_new.json
 ```
+
+## 2026-11-20 补充：要点重写、降级模式改用 Wiki、两处匹配问题
+
+- **要点第二版**：第一版整段概括的复核出错率约 21%（“不推荐”写成“禁用”、“极少数”写成“偶见”、把黑框警告当不良反应、跨字段混写）。
+  改为用途 / 禁忌 / 不良反应分段写、程度词和频率词照抄原文（确定性检查）、逐段药师复核、不过重写一次再不过就不写：
+  1,218 个药有要点，全量复核通过率 **96.9%**（第一版约 79%），剩下 38 段进隔离区（多是剂型张冠李戴）。
+- **降级模式改用 Wiki 库**（模型全部不可用时）：精选库已并入 Wiki，直接摘字段原文，按问题挑字段，隔离区字段和要点不用；
+  孕期 / 儿童 / 老人 / 过敏 / 肝肾 / 合并用药时不给剂量，问到的剂型没有时不给别的剂型的剂量。
+- **`search_drug` 头孢类误匹配**：问“头孢曲松 / 头孢克肟 / 注射用头孢曲松钠”都落到精选库的类别条目“头孢类抗生素”（没有剂量），
+  因为精选库药名按包含关系先匹配；现在问题里有更具体的药名时用具体药。
+- **`check_interaction` 查不到的药**：一起问的两个药有一个查不到时，提示语原来是“已查二甲双胍说明书，没有提到与另一药合用”，
+  模型据此把编造的药名当成真药（“盐酸氟格列他滨片能和二甲双胍一起吃吗”）；现在先说“知识库中没有查到 X，请核对药名”。
+- **隔离记录带内容哈希**：字段重新编译 / 重写后旧的隔离结论自动失效，由下次复核重新判断。
 
 ## 本地索引怎么建
 

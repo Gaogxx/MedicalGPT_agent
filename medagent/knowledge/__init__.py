@@ -121,11 +121,13 @@ class KnowledgeBase:
         std = self.normalize(q, "drug")
         if std in self.drugs:
             return {"found": True, "matched": f"别名「{q}」→「{std}」", **self.drugs[std], **self._label_extra(std, q)}
-        for dn, info in self.drugs.items():
-            if dn in q:
-                return {"found": True, "matched": f"已匹配药品「{dn}」", **info, **self._label_extra(dn, q)}
         from .ext import load_ext
         ext = load_ext()
+        # 问题里有比精选库药名更具体的药名时用具体的（“头孢曲松”不能落到精选库的类别条目“头孢”）
+        longer = next((n for n in ext._sorted if n in q and ext.lookup[n][0] == "drug"), "") if ext else ""
+        for dn, info in self.drugs.items():
+            if dn in q and not (len(longer) > len(dn) and dn in longer):
+                return {"found": True, "matched": f"已匹配药品「{dn}」", **info, **self._label_extra(dn, q)}
         ext_hit = ext.find(q, "drug") if ext else None
         if ext_hit:
             entry = {**ext.drug_entry(ext_hit[0], q), "query": name}
@@ -177,10 +179,13 @@ class KnowledgeBase:
         unknown = [n for n in names if n not in known and not (enabled() and _resolve(n))]
         out = {"drugs": names, "interactions": pairs, "unknown_drugs": unknown,
                "advice": "存在相互作用时请勿自行合用，咨询医生或药师" if pairs else "知识库未发现已知相互作用，但不代表绝对安全"}
-        if checked and not pairs:
+        if checked and not pairs and not unknown:
             out["labels_checked"] = checked
             out["advice"] = (f"已查{'、'.join(checked)}说明书的相互作用部分，没有提到与另一药合用的问题；"
                              "这不代表绝对安全，合用前请咨询医生或药师")
+        if unknown and not pairs:      # 有药查不到：先说查不到，不能让人以为“说明书没提到”就等于这个药存在
+            out["advice"] = (f"知识库中没有查到「{'、'.join(unknown)}」，无法判断相互作用；请核对药名（警惕来路不明的“特效药”），"
+                             "合用前咨询医生或药师")
         return out
 
     def _wiki_drugs(self, q: str, aspect: str | None, always: bool) -> dict[str, Any]:

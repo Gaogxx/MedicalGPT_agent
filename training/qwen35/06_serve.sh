@@ -3,7 +3,9 @@
 set -e
 source /root/miniconda3/etc/profile.d/conda.sh && conda activate serve
 WORK=${WORK:-/root/autodl-tmp}; REPO=${REPO:-$WORK/MedicalGPT_agent}
-vllm serve $WORK/models/qwen3.5-9b-medical \
+# 最终模型（2026-11-20 起）= 第 5 步“按工具结果作答”后的 qwen3.5-9b-medical-v5；从 GitHub Release 还原见 rebuild_from_release.sh。
+# 回到上一版：MODEL=$WORK/models/qwen3.5-9b-medical（第 4 步工具修补后的模型）
+vllm serve ${MODEL:-$WORK/models/qwen3.5-9b-medical-v5} \
     --served-model-name medical-agent --port 8000 \
     --chat-template $REPO/runtime/vllm/medicalgpt_qwen35_tools.jinja \
     --enable-auto-tool-choice --tool-call-parser hermes \

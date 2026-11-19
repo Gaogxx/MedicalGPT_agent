@@ -120,3 +120,38 @@ def test_narrow_class_not_widened():
     """缬沙坦说明书写的是“保钾利尿剂”：不能按“利尿剂”对上布美他尼（排钾的袢利尿剂）。"""
     assert not label_pair("缬沙坦", "布美他尼")["found"]
     assert label_pair("缬沙坦", "螺内酯")["found"]
+
+
+def test_specific_drug_beats_curated_category():
+    kb = load_kb()
+    assert kb.search_drug("注射用头孢曲松钠")["name"] == "头孢曲松"
+    assert kb.search_drug("头孢")["name"] == "头孢类抗生素"
+    assert kb.search_drug("布洛芬缓释胶囊")["name"] == "布洛芬"
+
+
+def test_degraded_mode_uses_wiki():
+    from medagent.templates import DEGRADED_HEADER, kb_fallback_answer
+    a = kb_fallback_answer("西地那非和硝酸甘油能一起用吗")
+    assert a.startswith(DEGRADED_HEADER) and "硝酸酯" in a
+    a = kb_fallback_answer("哮喘一般用什么药")
+    assert "说明书适应症写明了本病的药" in a and "不是治疗推荐" in a
+    a = kb_fallback_answer("尼古丁贴剂怎么用")
+    assert "没有外用剂型" in a and "mg" not in a                     # 问到的剂型没有：不给别的剂型的剂量
+    a = kb_fallback_answer("我怀孕了，头孢克肟一次吃多少")
+    assert "此处不提供" in a and "0.1g" not in a                     # 孕期：不给剂量
+
+
+def test_degraded_mode_skips_quarantined(monkeypatch):
+    import json
+    from medagent.knowledge import ext as ext_mod
+    from medagent.templates import kb_fallback_answer
+    ext_mod.load_ext.cache_clear()
+    q = next(q for q, e in json.load(open("medagent/knowledge/drug_kb.json", encoding="utf-8"))["drugs"].items()
+             if e["name"] == "头孢克肟")
+    monkeypatch.setattr("medagent.knowledge.wiki_check.QUARANTINE_PATH",
+                        type("P", (), {"exists": lambda s: True, "read_text": lambda s, encoding=None:
+                                       json.dumps({q: {"dosage": {}, "by_form.口服.dosage": {}}})})())
+    try:
+        assert "0.1g" not in kb_fallback_answer("头孢克肟一次吃多少")
+    finally:
+        ext_mod.load_ext.cache_clear()

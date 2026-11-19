@@ -524,38 +524,86 @@ async def compile_kb(args) -> None:
     print(json.dumps({k: v for k, v in meta.items() if k != "lint_dropped"}, ensure_ascii=False, indent=1))
 
 
+MODAL = ("禁用", "禁忌", "禁止", "慎用", "不推荐", "不宜", "避免", "忌用", "不建议", "不应", "停用", "勿用")
+FREQ = ("十分常见", "非常常见", "较常见", "常见", "多见", "偶见", "偶有", "较少见", "少见", "罕见", "极少数", "极少", "很少", "个别")
+_SOFT = ("慎用", "不推荐", "不宜", "不建议", "避免", "不应")
+SUMMARY_SECTIONS = (("用途", "indications"), ("禁忌", "contraindications"), ("不良反应", "side_effects"))
+
+
+def lexical_lint(section: str, text: str, src: str) -> str | None:
+    """程度词 / 频率词 / “严重”必须照原文：原文没有就不能出现（“不推荐”写成“禁用”、“极少数”写成“偶见”是 2026-11-20 复核里最常见的错）。
+    例外：禁忌段写“禁用 / 禁忌”，而原文是纯禁忌清单（没有慎用 / 不推荐这类软性说法）时允许。返回问题描述，没问题返回 None。"""
+    for n in _NUM.findall(text):
+        if n not in set(_NUM.findall(src)):
+            return f"数字 {n} 原文没有"
+    for w in MODAL:
+        if w in text and w not in src:
+            if section == "禁忌" and w in ("禁用", "禁忌") and not any(x in src for x in _SOFT):
+                continue
+            return f"程度词「{w}」原文没有"
+    for w in FREQ:
+        if w in text and w not in src and not any(w in x and x in src for x in FREQ):
+            return f"频率词「{w}」原文没有"
+    if "严重" in text and "严重" not in src:
+        return "原文没说“严重”"
+    return None
+
+
 async def summarize(args) -> None:
-    """Wiki 页的“要点”：模型只根据本条目已有的字段写 ≤100 字概括；数字必须都在条目里出现，再核对一遍忠实度，不过就不写。"""
+    """Wiki 页的“要点”（2026-11-20 重写）：用途 / 禁忌 / 不良反应分段，每段只用对应字段、用原文词语、程度词和频率词照抄；
+    逐段过数字 + 程度词 / 频率词的确定性检查和药师复核（不通过的带着问题重写一次，再不过就不写这段）。
+    旧版整段概括的复核出错率约 21%（把“不推荐”写成“禁用”、频率改写、把黑框警告当成不良反应、跨字段混写）。
+    进了隔离区的字段不参与概括。"""
+    from .wiki_check import _h, apply_quarantine
     path = Path(args.out)
     kb = json.loads(path.read_text(encoding="utf-8"))
+    view = json.loads(json.dumps(kb["drugs"]))
+    apply_quarantine(view)
     llm = LLM(args.llm, args.model)
     stats: Counter = Counter()
 
-    async def one(q: str, e: dict) -> None:
-        body = "\n".join(f"{t}：{e[f]}" for f, t in (("indications", "适应症"), ("contraindications", "禁忌"),
-                                                     ("dosage", "用法用量"), ("side_effects", "不良反应"),
-                                                     ("boxed_warning", "黑框警告")) if e.get(f))
-        if len(body) < 40:
-            return
-        zh = (await llm(f"下面是药品「{e['name']}」的知识库条目。请写不超过 100 字的要点，供医生快速浏览：用途、最重要的禁忌、"
-                        "最常见或最严重的不良反应。不要写剂量数字；不得加入条目里没有的任何信息。只输出要点正文。\n" + body, 300)).strip()
-        if not zh or len(zh) > 160:
-            stats["skip_len"] += 1
-            return
-        if any(n not in set(_NUM.findall(body)) for n in _NUM.findall(zh)):
-            stats["lint_number"] += 1
-            return
-        v = await llm.json("核对一段要点是否忠实于条目。要点是概括，省略允许；只有出现条目里没有的信息、或说错 / 说反，才判为不忠实。"
-                           f'只输出 JSON：{{"faithful": true/false}}\n条目：\n{body}\n要点：\n{zh}', 60)
-        if not isinstance(v, dict) or v.get("faithful") is not True:
-            stats["lint_faithful"] += 1
-            return
-        e["summary"] = zh
-        e.setdefault("source", {})["summary"] = f"模型据本条目内容概括（{args.model}，已过数字与忠实度核对）"
-        stats["ok"] += 1
+    async def section(name: str, sec: str, src: str) -> str | None:
+        feedback = ""
+        for attempt in range(2):
+            t = (await llm(f"下面是药品「{name}」说明书的「{sec}」段。写一句不超过 40 字的要点，供医生快速浏览。规则：\n"
+                           "1. 只用这一段里的内容，用原文的词语，不加原文没有的信息；\n"
+                           "2. 程度词照抄原文（禁用 / 慎用 / 不推荐 / 不宜 / 避免 等），不能把“慎用”“不推荐”写成“禁用”；\n"
+                           "3. 频率词照抄原文（常见 / 偶见 / 罕见 / 极少数 等），原文没写频率就不写；原文没说“严重”就不写“严重”；\n"
+                           "4. 不写剂量和任何数字；只输出这一句。" + feedback + f"\n原文：\n{src[:3000]}", 160)).strip().strip("。") + "。"
+            bad = lexical_lint(sec, t, src) if len(t) <= 70 else "太长"
+            if not bad:
+                v = await llm.json(f"你是药师。下面一句要点概括自药品「{name}」说明书的「{sec}」段。概括省略原文内容是允许的；"
+                                   "检查是否有实质性错误：原文没有的信息、意思说反或程度改变（如慎用 / 不推荐写成禁用）、频率改变、"
+                                   "把别的字段（如黑框警告、用法）的内容当成本段内容。\n"
+                                   f"原文：\n{src[:3000]}\n要点：{t}\n只输出 JSON：{{\"ok\": true/false, \"problem\": \"20字内\"}}", 100)
+                if isinstance(v, dict) and v.get("ok") is True:
+                    stats[f"ok_{sec}"] += 1
+                    return t
+                bad = (v or {}).get("problem", "复核未通过")
+            stats[f"retry_{sec}" if attempt == 0 else f"drop_{sec}"] += 1
+            feedback = f"\n（上一稿的问题：{bad}，请改正）"
+        return None
 
-    await asyncio.gather(*(one(q, e) for q, e in kb["drugs"].items() if e.get("kb_tier") in ("label", "curated")))
-    kb["meta"]["summaries"] = dict(stats)
+    async def one(q: str, e: dict, v: dict) -> None:
+        secs = []
+        for sec, f in SUMMARY_SECTIONS:
+            src = v.get(f) or ""
+            if len(src) >= 8:
+                t = await section(e["name"], sec, src)
+                if t:
+                    secs.append(f"{sec}：{t}")
+        if secs:
+            e["summary"] = "".join(secs)
+            e.setdefault("source", {})["summary"] = (f"模型据本条目适应症 / 禁忌 / 不良反应分段概括（{args.model}，"
+                                                     "已过数字、程度词与频率词、药师复核）")
+            stats["drugs_with_summary"] += 1
+        else:
+            e.pop("summary", None)
+            e.get("source", {}).pop("summary", None)
+            stats["drugs_without_summary"] += 1
+
+    await asyncio.gather(*(one(q, e, view[q]) for q, e in kb["drugs"].items() if e.get("kb_tier") in ("label", "curated")))
+    kb["meta"]["summaries"] = {"version": 2, **dict(stats)}
     kb["meta"]["llm_calls"] = kb["meta"].get("llm_calls", 0) + llm.calls
     path.write_text(json.dumps(kb, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(dict(stats), ensure_ascii=False))
