@@ -6,3 +6,4 @@ import pytest
 def _no_local_verifier(monkeypatch):
     monkeypatch.setenv("MEDAGENT_VERIFIER_URL", "")
     monkeypatch.setenv("MEDAGENT_REWARD_URL", "")
+    monkeypatch.setenv("MEDAGENT_WIKI_GAPS", "0")     # 测试不往 .cache 里记 Wiki 缺口

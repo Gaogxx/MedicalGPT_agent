@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 import uuid
 from dataclasses import asdict, dataclass
@@ -322,10 +323,17 @@ class MedicalAgent:
                     msgs.append({"role": "tool", "tool_call_id": c.id or f"{rnd}{i}",
                                  "content": json.dumps({"error": f"此场景不可用工具 {c.name}"}, ensure_ascii=False)})
                     continue
-                res = await self.toolbox.call(c.name, c.arguments, scope=f"{s['run_id']}:{wid}:{rnd}:{i}",
+                args = c.arguments
+                if c.name == "search_drug" and isinstance(args.get("name"), str):
+                    named = drug_name_with_form(args["name"], question)
+                    if named != args["name"]:
+                        s["events"].append({"stage": "tool_arg", "source": "search_drug:form",
+                                            "from": args["name"], "to": named})
+                        args = {**args, "name": named}
+                res = await self.toolbox.call(c.name, args, scope=f"{s['run_id']}:{wid}:{rnd}:{i}",
                                               events=s["events"])
                 if not res.ok and res.error and res.error.kind == ErrorKind.SILENT:
-                    res = await self.toolbox.call(c.name, c.arguments, scope=f"{s['run_id']}:{wid}:{rnd}:{i}:r",
+                    res = await self.toolbox.call(c.name, args, scope=f"{s['run_id']}:{wid}:{rnd}:{i}:r",
                                                   events=s["events"])
                 if res.ok:
                     observations.append([c.name, res.data])
@@ -360,6 +368,29 @@ class MedicalAgent:
                     if res.ok:
                         out.append([tool, res.data])
         return out
+
+
+_STOP = "\\s，。,.？?！!、；;：:的和与及吗呢跟"
+
+
+def drug_name_with_form(name: str, text: str) -> str:
+    """模型调 search_drug 时常只传通用名（“尼古丁”），用户原话却是“尼古丁贴剂”。不同剂型的用法用量不能互换，
+    所以把原话里与这个药名连在一起的剂型补进参数（“尼古丁”→“尼古丁贴剂”），让药品库按剂型返回；
+    原话里没有剂型、或模型传的名字已带剂型时原样返回。"""
+    from .knowledge.drug_label_kb import FORM_CATS, form_of
+    n = name.strip()
+    if len(n) < 2 or form_of(n) or n not in text:
+        return name
+    m = re.search(f"[^{_STOP}]{{0,6}}{re.escape(n)}[^{_STOP}]{{0,8}}", text)
+    if not m or not form_of(m.group(0)):
+        return name
+    span = m.group(0)
+    keys = [k for _, ks in FORM_CATS for k in ks]
+    end = max((span.rfind(k) + len(k) for k in keys if k in span), default=len(span))
+    while end < len(span) and span[end] in "剂片液膏丸囊粒散":      # “贴”→“贴剂”，“注射”→“注射液”
+        end += 1
+    start = min((span.find(k) for k in keys if k in span[: span.find(n)]), default=span.find(n))
+    return span[min(start, span.find(n)):max(end, span.find(n) + len(n))]
 
 
 class JsonlAudit:

@@ -85,23 +85,56 @@ class KnowledgeBase:
             main["duration"] = duration
         return main
 
+    def _label_extra(self, name: str, query: str = "") -> dict[str, Any]:
+        """精选库已并入 drug_kb.json：精选字段原样返回，只补上精选库没有的说明书信息
+        （所问剂型的用法用量、相互作用说明、黑框警告）。精选库的用法用量是常用口服剂型。"""
+        from .drug_label_kb import form_of
+        from .ext import form_view, load_ext
+        ext = load_ext()
+        lab = None
+        if ext and ext.labels:
+            hit = ext.lookup.get(name)
+            lab = ext.labels.get(hit[1]) if hit and hit[0] == "drug" else ext.labels.get(f"curated:{name}")
+        if not lab:
+            return {}
+        out: dict[str, Any] = {}
+        asked = form_of(query) if query else None
+        fv = form_view(lab, query)
+        if fv.get("dosage_form"):
+            out.update({"dosage_form": fv["dosage_form"], "dosage_for_form": fv.get("dosage"),
+                        "form_note": "dosage 为精选库的常用口服剂型用法；所问剂型的说明书用法见 dosage_for_form"})
+        elif asked and asked != "口服":
+            out["form_note"] = f"dosage 为常用口服剂型用法；知识库没有{asked}剂型的用法用量，不同剂型剂量不能互换，请以所用药品说明书或医嘱为准"
+        # 没问剂型时不附各剂型用法：精选库的用法就是常用口服剂型，附上别的剂型反而让模型不敢给剂量（“二甲双胍怎么吃”实测退步）
+        if lab.get("interactions_text"):
+            out["interaction_notes"] = lab["interactions_text"]
+        if lab.get("boxed_warning"):
+            out["boxed_warning"] = lab["boxed_warning"]
+        return out
+
     def search_drug(self, name: str) -> dict[str, Any]:
         q = name.strip()
         if not q:
             return {"found": False, "error": "药品名为空"}
         if q in self.drugs:
-            return {"found": True, **self.drugs[q]}
+            return {"found": True, **self.drugs[q], **self._label_extra(q, q)}
         std = self.normalize(q, "drug")
         if std in self.drugs:
-            return {"found": True, "matched": f"别名「{q}」→「{std}」", **self.drugs[std]}
+            return {"found": True, "matched": f"别名「{q}」→「{std}」", **self.drugs[std], **self._label_extra(std, q)}
         for dn, info in self.drugs.items():
             if dn in q:
-                return {"found": True, "matched": f"已匹配药品「{dn}」", **info}
+                return {"found": True, "matched": f"已匹配药品「{dn}」", **info, **self._label_extra(dn, q)}
         from .ext import load_ext
         ext = load_ext()
         ext_hit = ext.find(q, "drug") if ext else None
         if ext_hit:
-            return {**ext.drug_entry(ext_hit[0]), "query": name}
+            entry = {**ext.drug_entry(ext_hit[0], q), "query": name}
+            missing = [f for f in ("contraindications", "dosage", "side_effects") if "请查阅" in str(entry.get(f, ""))
+                       or "不含" in str(entry.get(f, "")) or "未记录" in str(entry.get(f, ""))]
+            if missing:
+                from .wiki import record_gap
+                record_gap(entry["name"], missing)
+            return entry
         for cat, members in self.synonyms.get("category", {}).items():
             if cat in q:
                 return {"found": False, "is_category": True, "query": name, "related_drugs": members,
@@ -115,6 +148,8 @@ class KnowledgeBase:
                 return {"found": False, "is_category": True, "query": name, "matched_by": hit[0], "related_drugs": related,
                         "suggestion": f"「{name}」不是具体药名。针对「{hit[0]}」可参考的药品：{'、'.join(related)}；"
                                       "请用具体药名查询用法与注意事项，具体用药请遵医嘱。"}
+        from .wiki import record_gap
+        record_gap(q, ["not_found"])
         return {"found": False, "query": name, "error": f"知识库中未找到药品「{name}」"}
 
     def check_interaction(self, drugs: list[str]) -> dict[str, Any]:

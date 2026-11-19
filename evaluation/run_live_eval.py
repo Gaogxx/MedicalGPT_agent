@@ -78,7 +78,8 @@ async def main() -> None:
     ap.add_argument("--out", default=str(ROOT / "evaluation" / "results" / "live_eval.json"))
     ap.add_argument("--mock", action="store_true")
     ap.add_argument("--limit", type=int)
-    ap.add_argument("--set", choices=("dev80", "ext", "all"), default="all")
+    ap.add_argument("--set", choices=("dev80", "ext", "all", "druglabel"), default="all",
+                    help="druglabel = 药品库补全试点的留出题（build_drug_label_eval.py），打分用 score_drug_label_eval.py")
     ap.add_argument("--judge", choices=("none", "strong", "verifier"), default="none")
     ap.add_argument("--strong-repair", action="store_true",
                     help="被校验器拦下的题按线上方式交给 strong 档（configs/models.yaml）重答；不加时池里只有本地模型，重答也由它自己完成")
@@ -102,6 +103,8 @@ async def main() -> None:
         cases += [{**json.loads(line), "subset": "dev80"} for line in open(ds / "agent_eval_dev.jsonl", encoding="utf-8")]
     if args.set in ("ext", "all") and (ds / "agent_eval_dev_ext.jsonl").exists():
         cases += [{**json.loads(line), "subset": "ext"} for line in open(ds / "agent_eval_dev_ext.jsonl", encoding="utf-8")]
+    if args.set == "druglabel":
+        cases = [json.loads(line) for line in open(ds / "drug_label_eval.jsonl", encoding="utf-8")]
     cases = cases[: args.limit] if args.limit else cases
     rows = []
     async with MCPToolbox({"medical": build_server()}) as tb:
@@ -120,7 +123,7 @@ async def main() -> None:
     new = [score_case(c, r["answer"]) for c, r in zip(cases, rows)]
     old = [(c, score_case(c, c["answer"])) for c in cases if c.get("answer")]     # 只有 dev 80 有 2026-09 的旧回答
     by = {}
-    for name in ("dev80", "ext"):
+    for name in ("dev80", "ext", "druglabel"):
         idx = [i for i, c in enumerate(cases) if c["subset"] == name]
         if idx:
             by[name] = aggregate([cases[i] for i in idx], [new[i] for i in idx], with_human=False)

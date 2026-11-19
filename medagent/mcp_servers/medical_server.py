@@ -82,6 +82,7 @@ def build_server(consult: Any = "auto") -> MCPServer:
 
     @server.tool(annotations=READ_ONLY,
                  description="查询具体药品的适应症、禁忌、用法用量、不良反应、相互作用。name 必须是药品名（支持常见商品名），"
+                             "用户提到剂型时请带上剂型原文（如“注射用XX”“XX缓释片”“XX栓”），不同剂型用法用量不同；"
                              "不要传症状；传药物类别（如“止痛药”）会返回候选药品列表")
     def search_drug(name: str) -> dict[str, Any]:
         return kb.search_drug(_require(name, "name"))
@@ -110,7 +111,14 @@ def build_server(consult: Any = "auto") -> MCPServer:
             res = rag_holder["pipeline"].search(q, top_k=top_k)
         except Exception as exc:  # noqa: BLE001
             raise ToolError(f"EXTERNAL: 知识库检索失败: {exc}") from exc
-        return {"query": q, "rewritten": res.rewritten, "evidence": res.evidence, "kb_version": kb.version,
+        evidence = res.evidence
+        from ..knowledge.wiki import load_wiki
+        wiki = load_wiki()
+        if wiki is not None:     # 问题里提到 Wiki 里有页面的药 / 病：编译好的页面放最前面（带出处），其余仍是全文检索
+            wev = wiki.evidence(q, k=2)
+            if wev:
+                evidence = wev + [e for e in evidence][: max(top_k - len(wev), 1)]
+        return {"query": q, "rewritten": res.rewritten, "evidence": evidence, "kb_version": kb.version,
                 "from_cache": res.from_cache}
 
     @server.tool(annotations=SIDE_EFFECT,
@@ -235,6 +243,21 @@ def build_server(consult: Any = "auto") -> MCPServer:
                 from ..rag.scalable import FTS5Index
                 rag_holder["fts5"] = FTS5Index(path)
         return rag_holder["fts5"]
+
+    @server.resource("wiki://index", description="医药 Wiki 目录（药品按 ATC 大类、疾病按 ICD-10 章）", mime_type="text/markdown")
+    def wiki_index() -> str:
+        from ..knowledge.wiki import WIKI
+        p = WIKI / "index.md"
+        return p.read_text(encoding="utf-8") if p.exists() else "医药 Wiki 尚未编译"
+
+    @server.resource("wiki://page/{name}", description="医药 Wiki 单页（药名 / 病名 / 别名）", mime_type="text/markdown")
+    def wiki_page(name: str) -> str:
+        from ..knowledge.wiki import load_wiki
+        w = load_wiki()
+        page = w.page(name) if w else None
+        if page is None:
+            raise ToolError(f"NOT_FOUND: 医药 Wiki 没有「{name}」的页面")
+        return page
 
     @server.resource("kb://sources", description="知识源三层的规模与可用状态（精选 KB / Wikidata 实体层 / 本地全文索引 / 在线文献）",
                      mime_type="application/json")
