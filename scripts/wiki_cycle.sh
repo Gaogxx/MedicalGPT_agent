@@ -11,7 +11,7 @@
 set -eo pipefail
 W=${W:-$HOME/medagent_kb}; R=${R:-$W/repo}; C=$W/cand; L=$W/logs/cycle_$(date +%Y%m%d); mkdir -p $L
 HUATUO=${HUATUO:-$W/huatuo/train.jsonl}; OPENFDA=${OPENFDA:-$W/openfda}
-COMPILER=${COMPILER:-$W/models/Qwen3.5-27B-FP8}; MEDICAL=${MEDICAL:-$W/models/qwen3.5-9b-medical}
+COMPILER=${COMPILER:-$W/models/Qwen3.5-27B-FP8}; MEDICAL=${MEDICAL:-$W/models/qwen3.5-9b-medical-v5}
 PY=${PY:-$W/venv/bin/python}; export PATH=$(dirname $PY):$PATH CUDA_VISIBLE_DEVICES=${GPU:-1}
 wait_up() { for i in $(seq 1 180); do curl -s -m 5 localhost:$1/v1/models | grep -q "$2" && return 0; sleep 10; done; return 1; }
 stop_vllm() { for p in $(pgrep -f "[v]llm serve"); do kill $p; done; for i in $(seq 1 60); do pgrep -f "[v]llm serve" >/dev/null || break; sleep 2; done; sleep 5; }

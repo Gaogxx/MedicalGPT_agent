@@ -3,9 +3,9 @@
 set -e
 source /root/miniconda3/etc/profile.d/conda.sh && conda activate serve
 WORK=${WORK:-/root/autodl-tmp}; REPO=${REPO:-$WORK/MedicalGPT_agent}
-# 默认部署 Medical-GPT（qwen3.5-9b-medical，第 4 步工具修补后的模型）。
-# 可选：MODEL=$WORK/models/qwen3.5-9b-medical-v5（再加第 5 步“按工具结果作答”LoRA，见 09_grounding.sh；还原见 rebuild_from_release.sh）
-vllm serve ${MODEL:-$WORK/models/qwen3.5-9b-medical} \
+# 默认部署 qwen3.5-9b-medical-v5（Medical-GPT + 第 5 步“按工具结果作答”LoRA，见 09_grounding.sh；还原见 rebuild_from_release.sh）。
+# 第 4 步后的 Medical-GPT：MODEL=$WORK/models/qwen3.5-9b-medical
+vllm serve ${MODEL:-$WORK/models/qwen3.5-9b-medical-v5} \
     --served-model-name medical-agent --port 8000 \
     --chat-template $REPO/runtime/vllm/medicalgpt_qwen35_tools.jinja \
     --enable-auto-tool-choice --tool-call-parser hermes \
